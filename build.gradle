@@ -1,85 +1,11 @@
 plugins {
-	id 'fabric-loom' version '1.10-SNAPSHOT'
-	id 'maven-publish'
-	id 'java'
-	id 'java-library'
-	id 'idea'
+	id 'fabric-loom' version '1.9-SNAPSHOT' apply(false)
+	id 'net.neoforged.moddev.legacyforge' version '2.0.77' apply(false)
+	id 'org.moddedmc.wiki.toolkit' version '0.4.1'
 }
 
-archivesBaseName = project.archives_base_name
-version = "%s+%s".formatted(project.mod_version, project.minecraft_version)
-group = project.maven_group
-
-
-loom {
-}
-
-repositories{
-	maven {
-		url "https://maven.shedaniel.me/"
-	}
-	maven{
-		url "https://maven.terraformersmc.com/"
-	}
-	maven {
-		url = uri("https://ueaj.dev/maven")
-	}
-	maven {
-		name = "Modrinth"
-		url = "https://api.modrinth.com/maven"
-		content {
-			includeGroup "maven.modrinth"
-		}
-	}
-}
-
-dependencies {
-
-	//to change the versions see the gradle.properties file
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
-	// Fabric API. This is technically optional, but you probably want it anyway.
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-
-	modApi "me.shedaniel.cloth:cloth-config-fabric:${project.cloth_version}"
-
-	modApi "com.terraformersmc:modmenu:${project.mod_menu_version}"
-}
-
-
-
-processResources {
-	inputs.property "version", project.version
-
-	filesMatching("fabric.mod.json") {
-		expand "version": project.version
-	}
-
-}
-sourceSets {
-    main {
-        resources {
-            exclude "assets/images"
-        }
-    }
-}
-
-tasks.withType(JavaCompile).configureEach {
-	it.options.release = 17
-
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
-}
-
-java {
-	withSourcesJar()
-}
-
-
-jar {
-	from("LICENSE") {
-		rename { "${it}_${project.base.archivesName.get()}"}
+subprojects {
+	tasks.withType(Javadoc) {
+		options.addStringOption('Xdoclint:none', '-quiet')
 	}
 }
