@@ -6,14 +6,10 @@ import com.evandev.connectiblechains.platform.Services;
 import me.shedaniel.autoconfig.ConfigData;
 import me.shedaniel.autoconfig.annotation.Config;
 import me.shedaniel.autoconfig.annotation.ConfigEntry;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 @Config(name = CommonClass.MODID)
 public class ModConfig implements ConfigData {
-    @SuppressWarnings("UnnecessaryModifier")
-    @ConfigEntry.Gui.Excluded
-    private static final transient boolean IS_DEBUG_ENV = Services.PLATFORM.isDevelopmentEnvironment();
 
     @ConfigEntry.Gui.Tooltip(count = 3)
     private float chainHangAmount = 8.0F;
@@ -29,6 +25,9 @@ public class ModConfig implements ConfigData {
 
     @ConfigEntry.Gui.Tooltip()
     private boolean collisionsEnabled = true;
+
+    @ConfigEntry.Gui.Tooltip()
+    private boolean debugDraw = Services.PLATFORM.isDevelopmentEnvironment();
 
     public float getChainHangAmount() {
         return chainHangAmount;
@@ -58,7 +57,7 @@ public class ModConfig implements ConfigData {
     }
 
     public boolean doDebugDraw() {
-        return IS_DEBUG_ENV;
+        return debugDraw;
     }
 
     public boolean isCollisionsEnabled() {
@@ -67,10 +66,6 @@ public class ModConfig implements ConfigData {
 
     public void setCollisionsEnabled(boolean collisionsEnabled) {
         this.collisionsEnabled = collisionsEnabled;
-    }
-
-    public void syncToClients(MinecraftServer server) {
-        Services.NETWORK.sendToAllClients(server, new ConfigSyncPayload(chainHangAmount, maxChainRange, collisionsEnabled));
     }
 
     public void syncToClient(ServerPlayer player) {
@@ -83,6 +78,7 @@ public class ModConfig implements ConfigData {
         this.quality = config.quality;
         this.showToolTip = config.showToolTip;
         this.collisionsEnabled = config.collisionsEnabled;
+        this.debugDraw = config.debugDraw;
         return this;
     }
 

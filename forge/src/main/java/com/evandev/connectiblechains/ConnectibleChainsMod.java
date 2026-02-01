@@ -7,10 +7,13 @@ import com.evandev.connectiblechains.client.render.entity.ChainKnotEntityRendere
 import com.evandev.connectiblechains.entity.ModEntityTypes;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.platform.ForgeRegistryHelper;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -35,13 +38,24 @@ public class ConnectibleChainsMod {
 
         modBus.addListener(this::setup);
         MinecraftForge.EVENT_BUS.addListener(this::onRightClickBlock);
+        MinecraftForge.EVENT_BUS.addListener(this::onPlayerJoin);
     }
 
     private void setup(final FMLCommonSetupEvent event) {
     }
 
     private void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        ChainItemCallbacks.chainUseEvent(event.getEntity(), event.getLevel(), event.getHand(), event.getHitVec());
+        InteractionResult result = ChainItemCallbacks.chainUseEvent(event.getEntity(), event.getLevel(), event.getHand(), event.getHitVec());
+        if (result.consumesAction()) {
+            event.setCanceled(true);
+            event.setCancellationResult(result);
+        }
+    }
+
+    private void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            CommonClass.fileConfig.syncToClient(player);
+        }
     }
 
     @Mod.EventBusSubscriber(modid = CommonClass.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
