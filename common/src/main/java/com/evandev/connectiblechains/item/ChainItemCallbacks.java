@@ -1,108 +1,74 @@
-/*
- * Copyright (C) 2024 legoatoom.
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package com.evandev.connectiblechains.item;
 
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.entity.ChainKnotEntity;
 import com.evandev.connectiblechains.entity.Chainable;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.item.TooltipContext;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.decoration.LeashKnotEntity;
-import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.world.World;
-import net.minecraft.world.event.GameEvent;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 
 import java.util.List;
 import java.util.function.Predicate;
 
-/**
- * Some static settings and functions for the chainItem.
- */
 public class ChainItemCallbacks {
 
+    public static InteractionResult chainUseEvent(Player player, Level level, InteractionHand hand, BlockHitResult hitResult) {
+        if (player == null || player.isCrouching()) return InteractionResult.PASS;
 
-    /**
-     * Because of how mods work, this function is called always when a player uses right click.
-     * But if the right click doesn't involve this mod (No chain/block to connect to) then we ignore immediately.
-     * <p>
-     * If it does involve us, then we have work to do, we create connections remove items from inventory and such.
-     *
-     * @param player    PlayerEntity that right-clicked on a block.
-     * @param world     The world the player is in.
-     * @param hand      What hand the player used.
-     * @param hitResult General information about the block that was clicked.
-     * @return An ActionResult.
-     */
-    public static ActionResult chainUseEvent(PlayerEntity player, World world, Hand hand, BlockHitResult hitResult) {
-        if (player == null || player.isSneaking()) return ActionResult.PASS;
-
-        ItemStack stack = player.getStackInHand(hand);
+        ItemStack stack = player.getItemInHand(hand);
         BlockPos blockPos = hitResult.getBlockPos();
-        BlockState blockState = world.getBlockState(blockPos);
+        BlockState blockState = level.getBlockState(blockPos);
 
-        if (blockState.isIn(ModTagRegistry.CHAIN_CONNECTIBLE)) {
-            if (hasAnyLeadsToConnect(world, blockPos, player)) {
-                return ActionResult.PASS;
+        if (blockState.is(ModTagRegistry.CHAIN_CONNECTIBLE)) {
+            if (hasAnyLeadsToConnect(level, blockPos, player)) {
+                return InteractionResult.PASS;
             }
-            if (stack.isIn(ModTagRegistry.CATENARY_ITEMS)) {
-                if (world instanceof ServerWorld serverWorld) {
+            if (stack.is(ModTagRegistry.CATENARY_ITEMS)) {
+                if (level instanceof ServerLevel serverWorld) {
                     ChainKnotEntity knot = ChainKnotEntity.getOrCreate(serverWorld, blockPos, stack.getItem());
 
-                    if (knot.getSourceItem() != stack.getItem()) return ActionResult.PASS;
+                    if (knot.getSourceItem() != stack.getItem()) return InteractionResult.PASS;
 
                     return knot.interact(player, hand);
                 }
-                return ActionResult.SUCCESS;
+                return InteractionResult.SUCCESS;
             }
-            if (world instanceof ServerWorld serverWorld) {
-                // SERVER-SIDE //
+            if (level instanceof ServerLevel serverWorld) {
                 return attachHeldChainsToBlock(player, serverWorld, blockPos);
             }
-            // CLIENT-SIDE //
-            if (!collectChainablesAround(world, blockPos, entity -> entity.getChainData(player) != null).isEmpty()) {
-                return ActionResult.SUCCESS;
+            if (!collectChainablesAround(level, blockPos, entity -> entity.getChainData(player) != null).isEmpty()) {
+                return InteractionResult.SUCCESS;
             } else {
-                return ActionResult.PASS;
+                return InteractionResult.PASS;
             }
         }
-        return ActionResult.PASS;
+        return InteractionResult.PASS;
     }
 
-    public static ActionResult attachHeldChainsToBlock(PlayerEntity player, ServerWorld world, BlockPos pos) {
-        List<Chainable> list = collectChainablesAround(world, pos, entity -> entity.getChainData(player) != null);
+    public static InteractionResult attachHeldChainsToBlock(Player player, ServerLevel level, BlockPos pos) {
+        List<Chainable> list = collectChainablesAround(level, pos, entity -> entity.getChainData(player) != null);
 
         ChainKnotEntity chainKnotEntity = null;
         for (Chainable chainable : list) {
             if (chainKnotEntity == null) {
-                chainKnotEntity = ChainKnotEntity.getOrCreate(world, pos, chainable.getSourceItem());
-                chainKnotEntity.onPlace();
+                chainKnotEntity = ChainKnotEntity.getOrCreate(level, pos, chainable.getSourceItem());
+                chainKnotEntity.playPlacementSound();
             }
 
             if (chainable.getSourceItem() != chainKnotEntity.getSourceItem()) continue;
@@ -115,53 +81,46 @@ public class ChainItemCallbacks {
         }
 
         if (!list.isEmpty()) {
-            world.emitGameEvent(GameEvent.BLOCK_ATTACH, pos, GameEvent.Emitter.of(player));
-            return ActionResult.SUCCESS;
+            level.gameEvent(GameEvent.BLOCK_ATTACH, pos, GameEvent.Context.of(player));
+            return InteractionResult.SUCCESS;
         } else {
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         }
     }
 
-    public static List<Chainable> collectChainablesAround(World world, BlockPos pos, Predicate<Chainable> predicate) {
+    public static List<Chainable> collectChainablesAround(Level level, BlockPos pos, Predicate<Chainable> predicate) {
         double distance = CommonClass.runtimeConfig.getMaxChainRange();
-
-        Box box = new Box(pos.getX(), pos.getY(), pos.getZ(), pos.getX(), pos.getY(), pos.getZ()).expand(distance);
-        return world.getEntitiesByClass(Entity.class, box, entity -> entity instanceof Chainable chainable && predicate.test(chainable)).stream().map(Chainable.class::cast).toList();
+        AABB box = new AABB(pos.getX(), pos.getY(), pos.getZ(), pos.getX(), pos.getY(), pos.getZ()).inflate(distance);
+        return level.getEntitiesOfClass(Entity.class, box, entity -> entity instanceof Chainable chainable && predicate.test(chainable)).stream().map(Chainable.class::cast).toList();
     }
 
-    /**
-     * Backport helper.
-     */
-    public static boolean hasAnyLeadsToConnect(World world, BlockPos pos, PlayerEntity player) {
-        LeashKnotEntity leashKnotEntity = null;
+    public static boolean hasAnyLeadsToConnect(Level level, BlockPos pos, Player player) {
+        LeashFenceKnotEntity leashKnotEntity = null;
         boolean found = false;
 
         int i = pos.getX();
         int j = pos.getY();
         int k = pos.getZ();
-        for (MobEntity mobEntity : world.getNonSpectatingEntities(MobEntity.class, new Box(i - 7.0, j - 7.0, k - 7.0, i + 7.0, j + 7.0, k + 7.0))) {
-            if (mobEntity.getHoldingEntity() == player) {
+        for (Mob mobEntity : level.getEntitiesOfClass(Mob.class, new AABB(i - 7.0, j - 7.0, k - 7.0, i + 7.0, j + 7.0, k + 7.0))) {
+            if (mobEntity.getLeashHolder() == player) {
                 if (leashKnotEntity == null) {
-                    leashKnotEntity = LeashKnotEntity.getOrCreate(world, pos);
-                    leashKnotEntity.onPlace();
+                    leashKnotEntity = LeashFenceKnotEntity.getOrCreateKnot(level, pos);
+                    leashKnotEntity.playPlacementSound();
                 }
-
-                mobEntity.attachLeash(leashKnotEntity, true);
+                mobEntity.setLeashedTo(leashKnotEntity, true);
                 found = true;
             }
         }
         return found;
     }
 
-
-    @Environment(EnvType.CLIENT)
-    public static void infoToolTip(ItemStack itemStack, TooltipContext ignoredTooltipContext, List<Text> texts) {
+    public static void infoToolTip(ItemStack itemStack, TooltipFlag ignoredTooltipContext, List<Component> texts) {
         if (CommonClass.runtimeConfig.doShowToolTip()) {
-            if (itemStack.isIn(ModTagRegistry.CATENARY_ITEMS)) {
+            if (itemStack.is(ModTagRegistry.CATENARY_ITEMS)) {
                 if (Screen.hasShiftDown()) {
-                    texts.add(1, Text.translatable("message.connectiblechains.connectible_chain_detailed").formatted(Formatting.AQUA));
+                    texts.add(1, Component.translatable("message.connectiblechains.connectible_chain_detailed").withStyle(ChatFormatting.AQUA));
                 } else {
-                    texts.add(1, Text.translatable("message.connectiblechains.connectible_chain").formatted(Formatting.YELLOW));
+                    texts.add(1, Component.translatable("message.connectiblechains.connectible_chain").withStyle(ChatFormatting.YELLOW));
                 }
             }
         }

@@ -1,36 +1,19 @@
-/*
- * Copyright (C) 2024 legoatoom.
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package com.evandev.connectiblechains.config;
 
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
+import com.evandev.connectiblechains.platform.Services;
 import me.shedaniel.autoconfig.ConfigData;
 import me.shedaniel.autoconfig.annotation.Config;
 import me.shedaniel.autoconfig.annotation.ConfigEntry;
-import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 
 @Config(name = CommonClass.MODID)
 public class ModConfig implements ConfigData {
     @SuppressWarnings("UnnecessaryModifier")
     @ConfigEntry.Gui.Excluded
-    private static final transient boolean IS_DEBUG_ENV = FabricLoader.getInstance().isDevelopmentEnvironment();
+    private static final transient boolean IS_DEBUG_ENV = Services.PLATFORM.isDevelopmentEnvironment();
 
     @ConfigEntry.Gui.Tooltip(count = 3)
     private float chainHangAmount = 8.0F;
@@ -75,7 +58,7 @@ public class ModConfig implements ConfigData {
     }
 
     public boolean doDebugDraw() {
-        return IS_DEBUG_ENV && MinecraftClient.getInstance().options.debugEnabled;
+        return IS_DEBUG_ENV;
     }
 
     public boolean isCollisionsEnabled() {
@@ -87,16 +70,13 @@ public class ModConfig implements ConfigData {
     }
 
     public void syncToClients(MinecraftServer server) {
-        for (ServerPlayerEntity player : PlayerLookup.all(server)) {
-            syncToClient(player);
-        }
+        Services.NETWORK.sendToAllClients(server, new ConfigSyncPayload(chainHangAmount, maxChainRange, collisionsEnabled));
     }
 
-    public void syncToClient(ServerPlayerEntity player) {
-        ServerPlayNetworking.send(player, new ConfigSyncPayload(chainHangAmount, maxChainRange, collisionsEnabled));
+    public void syncToClient(ServerPlayer player) {
+        Services.NETWORK.sendToClient(player, new ConfigSyncPayload(chainHangAmount, maxChainRange, collisionsEnabled));
     }
 
-    // [MODIFY THIS METHOD]
     public ModConfig copyFrom(ModConfig config) {
         this.chainHangAmount = config.chainHangAmount;
         this.maxChainRange = config.maxChainRange;
@@ -109,5 +89,4 @@ public class ModConfig implements ConfigData {
     public boolean doShowToolTip() {
         return showToolTip;
     }
-
 }

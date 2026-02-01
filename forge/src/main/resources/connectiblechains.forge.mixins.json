@@ -1,7 +1,7 @@
 {
     "required": true,
     "minVersion": "0.8",
-    "package": "com.evandev.reliable_replacer.mixin",
+    "package": "com.evandev.connectiblechains.mixin",
     "compatibilityLevel": "JAVA_17",
     "refmap": "${mod_id}.refmap.json",
     "mixins": [

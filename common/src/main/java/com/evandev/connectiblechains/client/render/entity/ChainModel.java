@@ -1,25 +1,11 @@
-/*
- * Copyright (C) 2024 legoatoom.
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package com.evandev.connectiblechains.client.render.entity;
 
 import com.evandev.connectiblechains.CommonClass;
-import net.minecraft.client.render.LightmapTextureManager;
-import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.MathHelper;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.util.Mth;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -27,44 +13,29 @@ import org.joml.Vector3f;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The geometry is baked (converted to an efficient format) into vertex and uv arrays.
- * This prevents having to recalculate the model every frame.
- */
 public record ChainModel(float[] vertices, float[] uvs) {
 
     public static Builder builder(int initialCapacity) {
         return new Builder(initialCapacity);
     }
 
-    /**
-     * Writes the model data to {@code buffer} and applies lighting.
-     *
-     * @param buffer   The target buffer.
-     * @param matrices The transformation stack
-     * @param bLight0  Block-light at the start.
-     * @param bLight1  Block-light at the end.
-     * @param sLight0  Sky-light at the start.
-     * @param sLight1  Sky-light at the end.
-     */
-    public void render(VertexConsumer buffer, MatrixStack matrices, int bLight0, int bLight1, int sLight0, int sLight1) {
-        Matrix4f modelMatrix = matrices.peek().getPositionMatrix();
-        Matrix3f normalMatrix = matrices.peek().getNormalMatrix();
+    public void render(VertexConsumer buffer, PoseStack matrices, int bLight0, int bLight1, int sLight0, int sLight1) {
+        Matrix4f modelMatrix = matrices.last().pose();
+        Matrix3f normalMatrix = matrices.last().normal();
         int count = vertices.length / 3;
         for (int i = 0; i < count; i++) {
-            // divide by 2 because chain has 2 face sets
             float f = (i % (count / 2f)) / (count / 2f);
-            int blockLight = (int) MathHelper.lerp(f, (float) bLight0, (float) bLight1);
-            int skyLight = (int) MathHelper.lerp(f, (float) sLight0, (float) sLight1);
-            int light = LightmapTextureManager.pack(blockLight, skyLight);
+            int blockLight = (int) Mth.lerp(f, (float) bLight0, (float) bLight1);
+            int skyLight = (int) Mth.lerp(f, (float) sLight0, (float) sLight1);
+            int light = LightTexture.pack(blockLight, skyLight);
             buffer
                     .vertex(modelMatrix, vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2])
                     .color(0.8f, 0.8f, 0.8f, 1f)
-                    .texture(uvs[i * 2], uvs[i * 2 + 1])
-                    .overlay(OverlayTexture.DEFAULT_UV)
-                    .light(light)
+                    .uv(uvs[i * 2], uvs[i * 2 + 1])
+                    .overlayCoords(OverlayTexture.NO_OVERLAY)
+                    .uv2(light)
                     .normal(normalMatrix, 1, 1, 1)
-                    .next();
+                    .endVertex();
         }
     }
 
@@ -105,11 +76,9 @@ public record ChainModel(float[] vertices, float[] uvs) {
         private float[] toFloatArray(List<Float> floats) {
             float[] array = new float[floats.size()];
             int i = 0;
-
             for (float f : floats) {
                 array[i++] = f;
             }
-
             return array;
         }
     }

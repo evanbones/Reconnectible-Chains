@@ -3,35 +3,31 @@ package com.evandev.connectiblechains.entity;
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
+import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.mojang.datafixers.util.Either;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.decoration.AbstractDecorationEntity;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.registry.Registries;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.BlockSoundGroup;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.BlockRotation;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.GameRules;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.decoration.HangingEntity;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-/**
- * This class contains all the logic for chaining entities.
- * Inspired by Leashable, but this allows for multiple connections.
- *
- */
 public interface Chainable {
     String CHAINS_NBT_KEY = "Chains";
     String SOURCE_ITEM_KEY = "SourceItem";
@@ -40,7 +36,7 @@ public interface Chainable {
         return CommonClass.runtimeConfig.getMaxChainRange();
     }
 
-    private static <E extends AbstractDecorationEntity & Chainable> boolean canAttachTo(E entity, Entity potentialHolder) {
+    private static <E extends HangingEntity & Chainable> boolean canAttachTo(E entity, Entity potentialHolder) {
         if (entity.getChainData(potentialHolder) != null) {
             return false;
         } else if (potentialHolder instanceof Chainable chainable) {
@@ -49,22 +45,21 @@ public interface Chainable {
         return false;
     }
 
-    private static <E extends AbstractDecorationEntity & Chainable> HashSet<ChainData> readChainDataSet(E entity, NbtCompound nbt) {
+    private static <E extends HangingEntity & Chainable> HashSet<ChainData> readChainDataSet(E entity, CompoundTag nbt) {
         HashSet<ChainData> result = new HashSet<>();
-        if (nbt.contains(CHAINS_NBT_KEY, NbtElement.LIST_TYPE)) {
-            NbtList list = nbt.getList(CHAINS_NBT_KEY, NbtElement.COMPOUND_TYPE);
-            for (NbtElement element : list) {
-                if (!(element instanceof NbtCompound compound)) continue;
+        if (nbt.contains(CHAINS_NBT_KEY, Tag.TAG_LIST)) {
+            ListTag list = nbt.getList(CHAINS_NBT_KEY, Tag.TAG_COMPOUND);
+            for (Tag element : list) {
+                if (!(element instanceof CompoundTag compound)) continue;
 
                 ChainData newChainData = null;
-                Item source = Registries.ITEM.get(Identifier.tryParse(compound.getString(SOURCE_ITEM_KEY)));
+                Item source = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(compound.getString(SOURCE_ITEM_KEY)));
 
-                if (compound.containsUuid("UUID")) {
-                    newChainData = new ChainData(Either.left(compound.getUuid("UUID")), source);
+                if (compound.hasUUID("UUID")) {
+                    newChainData = new ChainData(Either.left(compound.getUUID("UUID")), source);
                 } else if (compound.contains("DestX")) {
-                    // OLD DEPRECATED WAY OF STORING: Here for when people upgrade from previous versions. //
                     BlockPos desPos = new BlockPos(compound.getInt("DestX"), compound.getInt("DestY"), compound.getInt("DestZ"));
-                    BlockPos relPos = desPos.subtract(entity.getDecorationBlockPos());
+                    BlockPos relPos = desPos.subtract(entity.getPos());
                     Either<UUID, BlockPos> either = Either.right(relPos);
                     newChainData = new ChainData(either, source);
                 } else if (compound.contains("RelX")) {
@@ -80,12 +75,8 @@ public interface Chainable {
         return result;
     }
 
-    /**
-     * Goes through all the data sets and resolves the unresolved data.
-     */
-    private static <E extends AbstractDecorationEntity & Chainable> void resolveChainDataSet(E entity, HashSet<ChainData> chainDataSet) {
-        // Sanity check for server world
-        if (!(entity.getWorld() instanceof ServerWorld serverWorld)) return;
+    private static <E extends HangingEntity & Chainable> void resolveChainDataSet(E entity, HashSet<ChainData> chainDataSet) {
+        if (!(entity.level() instanceof ServerLevel serverWorld)) return;
 
         for (ChainData chainData : new HashSet<>(chainDataSet)) {
             if (chainData.unresolvedChainData != null) {
@@ -97,12 +88,12 @@ public interface Chainable {
                     if (chainHolder != null) {
                         ChainData newChainData = new ChainData(chainHolder, chainData.sourceItem);
                         entity.replaceChainData(chainData, null);
-                        attachChain(entity, newChainData, null, true); // TODO: Do it in one bulk action instead of separate.
+                        attachChain(entity, newChainData, null, true);
                     }
                 } else if (optionalBlockPos.isPresent()) {
-                    BlockPos targetPos = entity.getDecorationBlockPos().add(optionalBlockPos.get());
+                    BlockPos targetPos = entity.getPos().offset(optionalBlockPos.get());
 
-                    if (!serverWorld.isChunkLoaded(targetPos)) {
+                    if (!serverWorld.isLoaded(targetPos)) {
                         continue;
                     }
 
@@ -113,35 +104,31 @@ public interface Chainable {
                         attachChain(entity, newChainData, null, true);
                     }
                 }
-
             }
         }
     }
 
-    private static <E extends AbstractDecorationEntity & Chainable> void detachChain(E entity, ChainData chainData, boolean sendPacket, boolean dropItem) {
+    private static <E extends HangingEntity & Chainable> void detachChain(E entity, ChainData chainData, boolean sendPacket, boolean dropItem) {
         if (chainData.chainHolder != null && chainData.isAlive()) {
             Entity holder = chainData.chainHolder;
 
             chainData.kill();
             entity.replaceChainData(chainData, null);
             entity.onChainDetached(chainData);
-            if (entity.getWorld() instanceof ServerWorld serverWorld) {
-                // SERVER-SIDE //
+            if (entity.level() instanceof ServerLevel serverWorld) {
                 if (dropItem) {
-                    entity.dropItem(chainData.sourceItem);
+                    entity.spawnAtLocation(chainData.sourceItem);
                 }
 
                 if (sendPacket) {
-                    serverWorld.getChunkManager().sendToOtherNearbyPlayers(entity, new ChainAttachS2CPacket(entity, holder, null, chainData.sourceItem).asPacket());
+                    Services.NETWORK.sendToAllClients(serverWorld.getServer(), new ChainAttachS2CPacket(entity, holder, null, chainData.sourceItem));
                 }
                 ChainCollisionEntity.destroyCollision(serverWorld, chainData);
 
-                // Check Holder (The other end)
                 if (holder instanceof ChainKnotEntity knot) {
                     checkAndDiscardKnot(serverWorld, knot);
                 }
 
-                // Check Entity (The one detaching)
                 if (entity instanceof ChainKnotEntity knot) {
                     checkAndDiscardKnot(serverWorld, knot);
                 }
@@ -149,23 +136,22 @@ public interface Chainable {
         }
     }
 
-    private static void checkAndDiscardKnot(ServerWorld world, ChainKnotEntity knot) {
+    private static void checkAndDiscardKnot(ServerLevel level, ChainKnotEntity knot) {
         if (!knot.getChainDataSet().isEmpty()) return;
 
-        // Check incoming
         List<Chainable> incoming = ChainItemCallbacks.collectChainablesAround(
-                world,
-                knot.getDecorationBlockPos(),
+                level,
+                knot.getPos(),
                 c -> c.getChainData(knot) != null
         );
 
         if (incoming.isEmpty()) {
             knot.discard();
-            knot.onBreak(null);
+            knot.dropItem(null);
         }
     }
 
-    private static <E extends AbstractDecorationEntity & Chainable> void attachChain(E entity, ChainData chainData, @Nullable Entity previousHolder, boolean sendPacket) {
+    private static <E extends HangingEntity & Chainable> void attachChain(E entity, ChainData chainData, @Nullable Entity previousHolder, boolean sendPacket) {
         if (chainData.chainHolder == null) {
             throw new IllegalArgumentException("Given chainData has empty holder");
         }
@@ -173,16 +159,15 @@ public interface Chainable {
         entity.replaceChainData(entity.getChainData(previousHolder), chainData);
         entity.onChainAttached(chainData);
 
-        if (sendPacket && entity.getWorld() instanceof ServerWorld serverWorld) {
-            serverWorld.getChunkManager().sendToOtherNearbyPlayers(entity, new ChainAttachS2CPacket(entity, previousHolder, chainData.chainHolder, chainData.sourceItem).asPacket());
+        if (sendPacket && entity.level() instanceof ServerLevel serverLevel) {
+            Services.NETWORK.sendToAllClients(serverLevel.getServer(), new ChainAttachS2CPacket(entity, previousHolder, chainData.chainHolder, chainData.sourceItem));
             if (chainData.chainHolder instanceof Chainable) {
                 ChainCollisionEntity.createCollision(entity, chainData);
             }
         }
     }
 
-    static <E extends AbstractDecorationEntity & Chainable> void tickChain(ServerWorld world, E entity) {
-        // SERVER-SIDE //
+    static <E extends HangingEntity & Chainable> void tickChain(ServerLevel level, E entity) {
         HashSet<ChainData> chainDataSet = entity.getChainDataSet();
         resolveChainDataSet(entity, chainDataSet);
 
@@ -191,14 +176,8 @@ public interface Chainable {
             if (chainHolder != null) {
                 if (entity.isRemoved() || chainHolder.isRemoved()) {
                     Entity.RemovalReason reason = entity.isRemoved() ? entity.getRemovalReason() : chainHolder.getRemovalReason();
-                    assert reason != null;
-                    if (reason.shouldDestroy()) {
-                        if (entity.isRemoved()) {
-                            CommonClass.LOGGER.debug("Removing chain since chainReceiver ({}) is no longer alive, data: {}", entity, chainData);
-                        } else {
-                            CommonClass.LOGGER.debug("Removing chain since chainHolder ({}) is no longer alive, data: {}", chainHolder, chainData);
-                        }
-                        if (world.getGameRules().getBoolean(GameRules.DO_ENTITY_DROPS)) {
+                    if (reason != null && reason.shouldDestroy()) {
+                        if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
                             entity.detachChain(chainData);
                         } else {
                             entity.detachChainWithoutDrop(chainData);
@@ -206,9 +185,8 @@ public interface Chainable {
                     }
                 }
 
-                // The holder might now be detached, so we refresh again.
                 chainHolder = entity.getChainHolder(chainData);
-                if (chainHolder != null && chainHolder.getWorld().equals(entity.getWorld())) {
+                if (chainHolder != null && chainHolder.level().equals(entity.level())) {
                     float distanceTo = entity.distanceTo(chainHolder);
                     if (!entity.beforeChainTick(chainHolder, distanceTo)) {
                         continue;
@@ -227,15 +205,14 @@ public interface Chainable {
     }
 
     @Nullable
-    private static <E extends AbstractDecorationEntity & Chainable> Entity getChainHolder(E entity, ChainData chainData) {
+    private static <E extends HangingEntity & Chainable> Entity getChainHolder(E entity, ChainData chainData) {
         if (!entity.getChainDataSet().contains(chainData)) {
             return null;
         }
 
-        if (chainData.unresolvedChainHolderId != 0 && entity.getWorld().isClient) {
-            // CLIENT-SIDE //
-            Entity chainHolder = entity.getWorld().getEntityById(chainData.unresolvedChainHolderId);
-            if (chainHolder instanceof Entity) {
+        if (chainData.unresolvedChainHolderId != 0 && entity.level().isClientSide) {
+            Entity chainHolder = entity.level().getEntity(chainData.unresolvedChainHolderId);
+            if (chainHolder != null) {
                 entity.replaceChainData(chainData, new ChainData(chainHolder, chainData.sourceItem));
             }
         }
@@ -243,42 +220,29 @@ public interface Chainable {
         return chainData.chainHolder;
     }
 
-    /**
-     * Get the sound used for the source item, this way the sound is consistent.
-     */
-    static BlockSoundGroup getSourceBlockSoundGroup(Item sourceItem) {
+    static SoundType getSourceBlockSoundGroup(Item sourceItem) {
         if (sourceItem instanceof BlockItem blockItem) {
-            return blockItem.getBlock().getDefaultState().getSoundGroup();
-        } else if (new ItemStack(sourceItem).isIn(ModTagRegistry.ROPES)) {
-            // Not perfect, but it is better than making things that look like ropes/leads sound like chains.
-            return new BlockSoundGroup(
+            return blockItem.getBlock().defaultBlockState().getSoundType();
+        } else if (new ItemStack(sourceItem).is(ModTagRegistry.ROPES)) {
+            return new SoundType(
                     1.0f,
                     1.0f,
-                    SoundEvents.ENTITY_LEASH_KNOT_BREAK,
-                    BlockSoundGroup.WOOL.getStepSound(),
-                    SoundEvents.ENTITY_LEASH_KNOT_PLACE,
-                    BlockSoundGroup.WOOL.getHitSound(),
-                    BlockSoundGroup.WOOL.getFallSound()
+                    SoundEvents.LEASH_KNOT_BREAK,
+                    SoundType.WOOL.getStepSound(),
+                    SoundEvents.LEASH_KNOT_PLACE,
+                    SoundType.WOOL.getHitSound(),
+                    SoundType.WOOL.getFallSound()
             );
         }
-        return BlockSoundGroup.CHAIN;
+        return SoundType.CHAIN;
     }
 
     default boolean canAttachTo(Entity entity) {
-        return canAttachTo((AbstractDecorationEntity & Chainable) this, entity);
+        return canAttachTo((HangingEntity & Chainable) this, entity);
     }
 
     HashSet<ChainData> getChainDataSet();
 
-    /**
-     * Alter the chain data set by replacing or adding or removing based on the given values.
-     * If old is null, we assume you add new one.
-     * <p>
-     * If both are null, nothing should happen.
-     *
-     * @param oldChainData The old value, or null if you add a new one.
-     * @param newChainData The new value, or null if you are removing the old.
-     */
     void replaceChainData(@Nullable ChainData oldChainData, @Nullable ChainData newChainData);
 
     void setChainData(HashSet<ChainData> chainData);
@@ -291,44 +255,40 @@ public interface Chainable {
         if (unresolvedNewChainHolderId != 0) {
             newChainData = new ChainData(unresolvedNewChainHolderId, sourceItem);
         }
-
         this.replaceChainData(oldChainData, newChainData);
     }
 
-    default void readChainDataFromNbt(NbtCompound nbt) {
-        setSourceItem(Registries.ITEM.get(Identifier.tryParse(nbt.getString(SOURCE_ITEM_KEY))));
-
-        HashSet<ChainData> chainData = readChainDataSet((AbstractDecorationEntity & Chainable) this, nbt);
+    default void readChainDataFromNbt(CompoundTag nbt) {
+        setSourceItem(BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(nbt.getString(SOURCE_ITEM_KEY))));
+        HashSet<ChainData> chainData = readChainDataSet((HangingEntity & Chainable) this, nbt);
         if (!this.getChainDataSet().isEmpty() && chainData.isEmpty()) {
             this.detachAllChainsWithoutDrop();
         }
-
         this.setChainData(chainData);
     }
 
-    default void writeChainDataSetToNbt(NbtCompound nbt, HashSet<ChainData> chainDataSet) {
-        nbt.putString(SOURCE_ITEM_KEY, Registries.ITEM.getId(getSourceItem()).toString());
+    default void writeChainDataSetToNbt(CompoundTag nbt, HashSet<ChainData> chainDataSet) {
+        nbt.putString(SOURCE_ITEM_KEY, BuiltInRegistries.ITEM.getKey(getSourceItem()).toString());
+        BlockPos relativeTo = ((HangingEntity) this).getPos();
 
-        BlockPos relativeTo = ((AbstractDecorationEntity) this).getDecorationBlockPos();
-
-        NbtList linksTag = new NbtList();
+        ListTag linksTag = new ListTag();
         for (ChainData chainData : chainDataSet) {
             Either<UUID, BlockPos> either = chainData.unresolvedChainData;
             if (chainData.chainHolder instanceof ChainKnotEntity chainKnotEntity) {
-                either = Either.right(chainKnotEntity.getDecorationBlockPos().subtract(relativeTo));
+                either = Either.right(chainKnotEntity.getPos().subtract(relativeTo));
             } else if (chainData.chainHolder != null) {
-                either = Either.left(chainData.chainHolder.getUuid());
+                either = Either.left(chainData.chainHolder.getUUID());
             }
 
             if (either != null) {
-                String sourceItem = Registries.ITEM.getId(chainData.sourceItem).toString();
+                String sourceItem = BuiltInRegistries.ITEM.getKey(chainData.sourceItem).toString();
                 linksTag.add(either.map(uuid -> {
-                    NbtCompound nbtCompound = new NbtCompound();
-                    nbtCompound.putUuid("UUID", uuid);
+                    CompoundTag nbtCompound = new CompoundTag();
+                    nbtCompound.putUUID("UUID", uuid);
                     nbtCompound.putString(SOURCE_ITEM_KEY, sourceItem);
                     return nbtCompound;
                 }, blockPos -> {
-                    NbtCompound nbtCompound = new NbtCompound();
+                    CompoundTag nbtCompound = new CompoundTag();
                     nbtCompound.putInt("RelX", blockPos.getX());
                     nbtCompound.putInt("RelY", blockPos.getY());
                     nbtCompound.putInt("RelZ", blockPos.getZ());
@@ -343,11 +303,11 @@ public interface Chainable {
     }
 
     default void detachChain(ChainData chainData) {
-        detachChain((AbstractDecorationEntity & Chainable) this, chainData, true, true);
+        detachChain((HangingEntity & Chainable) this, chainData, true, true);
     }
 
     default void detachChainWithoutDrop(ChainData chainData) {
-        detachChain((AbstractDecorationEntity & Chainable) this, chainData, true, false);
+        detachChain((HangingEntity & Chainable) this, chainData, true, false);
     }
 
     default void detachAllChains() {
@@ -365,14 +325,6 @@ public interface Chainable {
     default void onChainDetached(ChainData removedChainData) {
     }
 
-    /**
-     * Called before the default chain-ticking logic.
-     * Subclasses can override this to add their own logic to it.
-     * <p>
-     * {@return whether the default logic should run after this.}
-     *
-     * @see Chainable#tickChain
-     */
     default boolean beforeChainTick(Entity chainHolder, float distance) {
         return true;
     }
@@ -383,7 +335,7 @@ public interface Chainable {
     }
 
     default void attachChain(ChainData chainData, @Nullable Entity previousHolder, boolean sendPacket) {
-        attachChain((AbstractDecorationEntity & Chainable) this, chainData, previousHolder, sendPacket);
+        attachChain((HangingEntity & Chainable) this, chainData, previousHolder, sendPacket);
     }
 
     default void onChainAttached(ChainData newChainData) {
@@ -391,7 +343,7 @@ public interface Chainable {
 
     @Nullable
     default Entity getChainHolder(ChainData chainData) {
-        return getChainHolder((AbstractDecorationEntity & Chainable) this, chainData);
+        return getChainHolder((HangingEntity & Chainable) this, chainData);
     }
 
     @Nullable
@@ -406,39 +358,26 @@ public interface Chainable {
         return null;
     }
 
-    /**
-     * The item that used as the wrapping. Individual ChainData have their own source.
-     */
     Item getSourceItem();
 
     void setSourceItem(Item item);
 
-    default BlockSoundGroup getSourceBlockSoundGroup() {
+    default SoundType getSourceBlockSoundGroup() {
         return getSourceBlockSoundGroup(getSourceItem());
     }
 
-    Vec3d getChainPos(float delta);
+    Vec3 getChainPos(float delta);
 
     final class ChainData {
-        /**
-         * Boolean to check if the chain link is already dead
-         */
-        private boolean isDead = false;
-        /**
-         * A list of collision entity ids, only used in the server.
-         */
         public final ArrayList<Integer> collisionStorage = new ArrayList<>(16);
-        @Nullable
-        public Either<UUID, BlockPos> unresolvedChainData;
         @NotNull
         public final Item sourceItem;
         final int unresolvedChainHolderId;
-        /**
-         * The Holder is the entity that gets/receives the chain.
-         * Either a ChainKnotEntity or a Player.
-         */
         @Nullable
         private final Entity chainHolder;
+        @Nullable
+        public Either<UUID, BlockPos> unresolvedChainData;
+        private boolean isDead = false;
 
         public ChainData(@Nullable Either<UUID, BlockPos> unresolvedChainData, @NotNull Item sourceItem) {
             this.unresolvedChainData = unresolvedChainData;
@@ -461,7 +400,7 @@ public interface Chainable {
             this.unresolvedChainData = null;
         }
 
-        public BlockSoundGroup getSourceBlockSoundGroup() {
+        public SoundType getSourceBlockSoundGroup() {
             return Chainable.getSourceBlockSoundGroup(sourceItem);
         }
 
@@ -471,22 +410,15 @@ public interface Chainable {
 
         @Override
         public boolean equals(Object o) {
-            if (!(o instanceof ChainData chainData)) {
-                return false;
-            }
-
+            if (!(o instanceof ChainData chainData)) return false;
             int thisId = getHolderId();
             int thatId = chainData.getHolderId();
-            if (thisId != 0 && thisId == thatId) {
-                return true;
-            }
+            if (thisId != 0 && thisId == thatId) return true;
             return unresolvedChainData != null && unresolvedChainData.equals(chainData.unresolvedChainData);
         }
 
         public void kill() {
-            if (isDead) {
-                CommonClass.LOGGER.warn("Stop! Stop! {} is already dead!", this);
-            }
+            if (isDead) CommonClass.LOGGER.warn("Stop! Stop! {} is already dead!", this);
             isDead = true;
         }
 
@@ -499,22 +431,15 @@ public interface Chainable {
             return Objects.hash(getHolderId());
         }
 
-        public void applyRotation(BlockRotation rotation) {
+        public void applyRotation(Rotation rotation) {
             if (unresolvedChainData != null) {
                 unresolvedChainData = unresolvedChainData.mapRight(blockPos -> blockPos.rotate(rotation));
             }
         }
 
-
         @Override
         public String toString() {
-            return "ChainData{" +
-                    "collisionStorage=" + collisionStorage +
-                    ", unresolvedChainData=" + unresolvedChainData +
-                    ", sourceItem=" + sourceItem +
-                    ", unresolvedChainHolderId=" + unresolvedChainHolderId +
-                    ", chainHolder=" + chainHolder +
-                    '}';
+            return "ChainData{" + "collisionStorage=" + collisionStorage + ", unresolvedChainData=" + unresolvedChainData + ", sourceItem=" + sourceItem + ", unresolvedChainHolderId=" + unresolvedChainHolderId + ", chainHolder=" + chainHolder + '}';
         }
     }
 }

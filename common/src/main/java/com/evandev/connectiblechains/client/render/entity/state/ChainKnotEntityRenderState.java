@@ -1,9 +1,7 @@
 package com.evandev.connectiblechains.client.render.entity.state;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
-import net.minecraft.item.Item;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.HashSet;
 
@@ -11,14 +9,12 @@ public class ChainKnotEntityRenderState {
     public HashSet<ChainData> chainDataSet = new HashSet<>();
     public Item sourceItem;
 
-
-    @Environment(EnvType.CLIENT)
     public static class ChainData {
         public boolean useBaked;
         public Item sourceItem;
-        public Vec3d offset = Vec3d.ZERO;
-        public Vec3d startPos = Vec3d.ZERO;
-        public Vec3d endPos = Vec3d.ZERO;
+        public Vec3 offset = Vec3.ZERO;
+        public Vec3 startPos = Vec3.ZERO;
+        public Vec3 endPos = Vec3.ZERO;
         public int chainedEntityBlockLight = 0;
         public int chainHolderBlockLight = 0;
         public int chainedEntitySkyLight = 15;

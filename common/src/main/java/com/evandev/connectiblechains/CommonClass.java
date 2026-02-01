@@ -2,33 +2,47 @@ package com.evandev.connectiblechains;
 
 import com.evandev.connectiblechains.config.ModConfig;
 import com.evandev.connectiblechains.entity.ModEntityTypes;
-import com.evandev.connectiblechains.item.ChainItemCallbacks;
+import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
+import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
+import com.evandev.connectiblechains.platform.Services;
 import com.mojang.logging.LogUtils;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.ConfigHolder;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
-import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionResult;
 import org.slf4j.Logger;
 
-public class CommonClass implements ModInitializer {
+public class CommonClass {
 
     public static final String MODID = "connectiblechains";
     public static final Logger LOGGER = LogUtils.getLogger();
     public static ModConfig fileConfig;
     public static ModConfig runtimeConfig;
 
-    @Override
-    public void onInitialize() {
-
+    public static void init() {
         ModEntityTypes.init();
+
         AutoConfig.register(ModConfig.class, Toml4jConfigSerializer::new);
         ConfigHolder<ModConfig> configHolder = AutoConfig.getConfigHolder(ModConfig.class);
         fileConfig = configHolder.getConfig();
         runtimeConfig = new ModConfig().copyFrom(fileConfig);
 
-        UseBlockCallback.EVENT.register(ChainItemCallbacks::chainUseEvent);
-        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> fileConfig.syncToClient(handler.getPlayer()));
+        configHolder.registerSaveListener((holder, config) -> {
+            runtimeConfig.copyFrom(config);
+            return InteractionResult.PASS;
+        });
+
+        Services.NETWORK.registerClientReceiver(
+                ChainAttachS2CPacket.class,
+                new ResourceLocation(MODID, "s2c_chain_attach_packet_id"),
+                ChainAttachS2CPacket::new
+        );
+
+        Services.NETWORK.registerClientReceiver(
+                ConfigSyncPayload.class,
+                new ResourceLocation(MODID, "config_sync"),
+                ConfigSyncPayload::new
+        );
     }
 }
