@@ -33,6 +33,10 @@
     "fabricloader": ">=0.14",
     "fabric": "*",
     "minecraft": "${minecraft_version}",
-    "java": ">=17"
+    "java": ">=17",
+    "cloth-config": ">=11.1.118"
+  },
+  "suggests": {
+    "modmenu": ">=11.0.3"
   }
 }

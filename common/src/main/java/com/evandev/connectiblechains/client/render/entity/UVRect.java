@@ -1,17 +1,19 @@
 package com.evandev.connectiblechains.client.render.entity;
 
-import com.mojang.serialization.Codec;
 import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.Codec;
 
 import java.util.List;
 
 public record UVRect(float x0, float x1) {
-    public static final Codec<Pair<UVRect, UVRect>> CODEC = Codec.FLOAT.listOf().xmap(UVRect::to, UVRect::from);
-
     public static final UVRect DEFAULT_SIDE_A = new UVRect(0, 3);
     public static final UVRect DEFAULT_SIDE_B = new UVRect(3, 6);
+    public static final Codec<Pair<UVRect, UVRect>> CODEC = Codec.FLOAT.listOf().xmap(UVRect::to, UVRect::from);
 
     private static Pair<UVRect, UVRect> to(List<Float> floats) {
+        if (floats.size() < 4) {
+            return new Pair<>(DEFAULT_SIDE_A, DEFAULT_SIDE_B);
+        }
         return new Pair<>(new UVRect(floats.get(0), floats.get(1)), new UVRect(floats.get(2), floats.get(3)));
     }
 

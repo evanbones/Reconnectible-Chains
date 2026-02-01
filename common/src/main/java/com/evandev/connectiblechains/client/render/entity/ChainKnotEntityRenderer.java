@@ -38,6 +38,8 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
     public ChainKnotEntityRenderer(EntityRendererProvider.Context context) {
         super(context);
         this.model = new ChainKnotEntityModel<>(context.bakeLayer(ClientInitializer.CHAIN_KNOT));
+
+        ClientInitializer.getInstance().setChainKnotEntityRenderer(this);
     }
 
     public ChainRenderer getChainRenderer() {

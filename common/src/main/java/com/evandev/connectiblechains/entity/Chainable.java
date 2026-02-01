@@ -139,11 +139,7 @@ public interface Chainable {
     private static void checkAndDiscardKnot(ServerLevel level, ChainKnotEntity knot) {
         if (!knot.getChainDataSet().isEmpty()) return;
 
-        List<Chainable> incoming = ChainItemCallbacks.collectChainablesAround(
-                level,
-                knot.getPos(),
-                c -> c.getChainData(knot) != null
-        );
+        List<Chainable> incoming = ChainItemCallbacks.collectChainablesAround(level, knot.getPos(), c -> c.getChainData(knot) != null);
 
         if (incoming.isEmpty()) {
             knot.discard();
@@ -224,15 +220,7 @@ public interface Chainable {
         if (sourceItem instanceof BlockItem blockItem) {
             return blockItem.getBlock().defaultBlockState().getSoundType();
         } else if (new ItemStack(sourceItem).is(ModTagRegistry.ROPES)) {
-            return new SoundType(
-                    1.0f,
-                    1.0f,
-                    SoundEvents.LEASH_KNOT_BREAK,
-                    SoundType.WOOL.getStepSound(),
-                    SoundEvents.LEASH_KNOT_PLACE,
-                    SoundType.WOOL.getHitSound(),
-                    SoundType.WOOL.getFallSound()
-            );
+            return new SoundType(1.0f, 1.0f, SoundEvents.LEASH_KNOT_BREAK, SoundType.WOOL.getStepSound(), SoundEvents.LEASH_KNOT_PLACE, SoundType.WOOL.getHitSound(), SoundType.WOOL.getFallSound());
         }
         return SoundType.CHAIN;
     }
@@ -428,7 +416,7 @@ public interface Chainable {
 
         @Override
         public int hashCode() {
-            return Objects.hash(getHolderId());
+            return Objects.hash(getHolderId(), unresolvedChainData);
         }
 
         public void applyRotation(Rotation rotation) {

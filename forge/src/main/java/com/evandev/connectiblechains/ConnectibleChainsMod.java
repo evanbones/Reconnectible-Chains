@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -64,6 +65,18 @@ public class ConnectibleChainsMod {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
             new ClientInitializer().onInitializeClient();
+        }
+
+        @SubscribeEvent
+        public static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
+            event.registerReloadListener(ClientInitializer.getInstance().getChainTextureManager());
+        }
+
+        @SubscribeEvent
+        public static void onClientJoin(net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingIn event) {
+            CommonClass.runtimeConfig.copyFrom(CommonClass.fileConfig);
+            ClientInitializer.getInstance().getChainKnotEntityRenderer()
+                    .ifPresent(r -> r.getChainRenderer().purge());
         }
 
         @SubscribeEvent
