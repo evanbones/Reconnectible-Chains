@@ -64,19 +64,17 @@ public class ConnectibleChainsMod {
 
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
-            new ClientInitializer().onInitializeClient();
+            if (ClientInitializer.getInstance() == null) {
+                new ClientInitializer().onInitializeClient();
+            }
         }
 
         @SubscribeEvent
         public static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
+            if (ClientInitializer.getInstance() == null) {
+                new ClientInitializer().onInitializeClient();
+            }
             event.registerReloadListener(ClientInitializer.getInstance().getChainTextureManager());
-        }
-
-        @SubscribeEvent
-        public static void onClientJoin(net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingIn event) {
-            CommonClass.runtimeConfig.copyFrom(CommonClass.fileConfig);
-            ClientInitializer.getInstance().getChainKnotEntityRenderer()
-                    .ifPresent(r -> r.getChainRenderer().purge());
         }
 
         @SubscribeEvent
@@ -101,6 +99,15 @@ public class ConnectibleChainsMod {
         @SubscribeEvent
         public static void onTooltip(ItemTooltipEvent event) {
             ChainItemCallbacks.infoToolTip(event.getItemStack(), event.getFlags(), event.getToolTip());
+        }
+
+        @SubscribeEvent
+        public static void onClientJoin(net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingIn event) {
+            CommonClass.runtimeConfig.copyFrom(CommonClass.fileConfig);
+            if (ClientInitializer.getInstance() != null) {
+                ClientInitializer.getInstance().getChainKnotEntityRenderer()
+                        .ifPresent(r -> r.getChainRenderer().purge());
+            }
         }
     }
 }
