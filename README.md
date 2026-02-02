@@ -1,55 +1,44 @@
-<!--suppress HtmlDeprecatedAttribute, HtmlRequiredAltAttribute -->
-<p align="center"><img src="https://raw.githubusercontent.com/legoatoom/ConnectibleChains/e86bbc4f4636e541a80c34099e0885ee99d6f793/src/main/resources/assets/logo.png" height="128"></p>
-<h3 align="center">Connectible Chains</h3>
-<p align="center">Connect your fences and walls with a decorative chain!</p>
 <p align="center">
-
-  <a title="Fabric API" href="https://github.com/FabricMC/fabric">
-    <img src="https://i.imgur.com/Ol1Tcf8.png" width="151" height="50"></a><a title="Cloth API" href="https://modrinth.com/mod/cloth-config"><img src="https://i.imgur.com/7weZ8uu.png" width="151" height="50"></a>
-
-<br>
-
-<a href="https://www.curseforge.com/minecraft/mc-mods/connectiblechains" rel="nofollow">
-<img src="https://img.shields.io/badge/dynamic/json?color=f16436&logo=curseforge&query=downloads.total&url=https://api.cfwidget.com/415681&label=fabric&cacheSeconds=86400&style=for-the-badge"></a><a href="https://www.curseforge.com/minecraft/mc-mods/connectible-chains-forge" rel="nofollow">
-<img src="https://img.shields.io/badge/dynamic/json?color=f16436&logo=curseforge&query=downloads.total&url=https://api.cfwidget.com/418514&label=forge&cacheSeconds=86400&style=for-the-badge"></a><a href="https://modrinth.com/mod/connectiblechains" rel="nofollow">
-<img src="https://img.shields.io/modrinth/dt/ykSfIgTw?logo=modrinth&logoColor=white&style=for-the-badge">
-</a><a href="https://github.com/legoatoom/ConnectibleChains" rel="nofollow">
-<img src="https://img.shields.io/github/downloads/legoatoom/ConnectibleChains/total?logo=GitHub&style=for-the-badge">
-</a>
+  <img src="images/logo.png" width="50%">
 </p>
 
+# Reconnectible Chains
 
-## Description
+<a href='https://files.minecraftforge.net'><img alt="forge" height="56" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/forge_vector.svg"></a>
+<a href='https://fabricmc.net'><img alt="fabric" height="56" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/fabric_vector.svg"></a>
+<a href='https://neoforged.net/'><img alt="neoforge" height="56" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/neoforge_vector.svg"></a>
+
 Connect your fences/walls with a decorative chain!
 
-Use the normal vanilla chain item on fences or walls.
+Reconnectible Chains is a **multiloader** port of
+legoatoom's [Connectible Chains](https://github.com/legoatoom/ConnectibleChains). For more information on the mod in
+general, please see the [original modpage](https://modrinth.com/mod/connectiblechains). Reconnectible Chains is _not_
+officially supported by legoatoom, please do not report issues with this mod on their issue tracker. Instead,
+see [this mod's issue tracker](https://github.com/evanbones/Reconnectible-Chains/issues).
 
-These chains have collision and can be broken when attacking it with a shear. \
-Sneak on fences if you want to place them normally.
+## What's New?
 
-#### Images
-<h6>Path</h6>
-<img src="https://raw.githubusercontent.com/legoatoom/ConnectibleChains/9c61b5c2fbe298f6dc01db78fd62d47bf363a673/src/main/resources/assets/images/2022-01-14_22.03.12.png" height="250px">
+* Native Forge/NeoForge port.
+* Added config options to disable chain collisions and debug rendering.
+* You can now punch knots directly to break them.
+* Knots break instantly instead of waiting a couple seconds.
+* Using shears to break knots now reduces its durability.
+* Safer knot discarding, should fix issues with knots across chunk borders.
+* Additional safety checks for collision entities on dedicated servers.
 
+## Compatibility With Other Mods
 
-#### Issues
-If you have encountered any bugs or have some feedback, go to the GitHub [issues](https://github.com/legoatoom/ConnectibleChains/issues) page.
+A number of mods are natively supported, namely:
 
-#### Version Support
-I will not be supporting versions lower than 1.20.6
+* Farmer's Delight (Rope)
+* Supplementaries (Rope)
+* Beautify (Rope)
+* Critters and Companions (Silk Lead)
+* Any mods that correctly tag their chains with `#c:chains`
 
-#### Compatibility with other mods
-See the wiki.
+See [the wiki](https://github.com/legoatoom/ConnectibleChains/wiki/Customization-and-Compatibility) for information on
+adding additional mod compatibility.
 
-#### Forge?
-There is a forge port however I do not maintain it. \
-https://www.curseforge.com/minecraft/mc-mods/connectible-chains-forge
+## License
 
-
-### Known Bugs
-Rendering a link that is perfectly vertical does not work.
-
-#### Other information
-
-If there are invisible collisions for some reason, hold a shear while
-having entity hitboxes on (F3+B) to see the collisions and then attack them to remove them.
+[![Code license (LGPL)](https://img.shields.io/badge/code%20license-LGPL-green.svg?style=flat-square)](https://github.com/evanbones/Reconnectible-Chains/blob/main/LICENSE)
