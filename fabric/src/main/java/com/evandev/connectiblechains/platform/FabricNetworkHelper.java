@@ -3,10 +3,11 @@ package com.evandev.connectiblechains.platform;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
 import com.evandev.connectiblechains.platform.services.INetworkHelper;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.api.EnvType;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -24,14 +25,8 @@ public class FabricNetworkHelper implements INetworkHelper {
 
     @Override
     public <T> void registerClientReceiver(Class<T> type, ResourceLocation id, Function<RegistryFriendlyByteBuf, T> decoder) {
-        if (type == ChainAttachS2CPacket.class) {
-            ClientPlayNetworking.registerGlobalReceiver(ChainAttachS2CPacket.TYPE, (payload, context) -> {
-                context.client().execute(() -> ChainAttachS2CPacket.handle(payload, context.player()));
-            });
-        } else if (type == ConfigSyncPayload.class) {
-            ClientPlayNetworking.registerGlobalReceiver(ConfigSyncPayload.TYPE, (payload, context) -> {
-                context.client().execute(() -> ConfigSyncPayload.handle(payload));
-            });
+        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
+            FabricClientNetworkHelper.registerClientReceiver(type);
         }
     }
 

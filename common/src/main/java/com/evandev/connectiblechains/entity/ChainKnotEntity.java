@@ -184,8 +184,18 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
     @Override
     public boolean skipAttackInteraction(@NotNull Entity attacker) {
-        if (!super.skipAttackInteraction(attacker)) playSound(getSourceBlockSoundGroup().getHitSound(), 0.5F, 1.0F);
-        return true;
+        if (attacker instanceof Player player) {
+            if (level().isClientSide) return false;
+            if (player.isCreative()) {
+                detachAllChainsWithoutDrop();
+            } else {
+                detachAllChains();
+                this.dropItem(player);
+            }
+            this.remove(RemovalReason.KILLED);
+            return true;
+        }
+        return super.skipAttackInteraction(attacker);
     }
 
     @Override
