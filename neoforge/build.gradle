@@ -58,7 +58,7 @@ publishMods {
         projectId = "1451848"
         minecraftVersions.add("${minecraft_version}")
 
-        optional { slug = "cloth-config" }
+        requires { slug = "cloth-config" }
     }
 
     modrinth {
@@ -66,6 +66,6 @@ publishMods {
         projectId = "5pzBXDS3"
         minecraftVersions.add("${minecraft_version}")
 
-        optional { slug = "cloth-config" }
+        requires { slug = "cloth-config" }
     }
 }
