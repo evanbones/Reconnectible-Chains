@@ -6,11 +6,14 @@ import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -47,14 +50,14 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     public ChainKnotEntity(Level level, BlockPos pos, @NotNull Item sourceItem) {
         super(ModEntityTypes.CHAIN_KNOT.get(), level, pos);
         this.sourceItem = sourceItem;
-        setPos(pos.getX(), pos.getY(), pos.getZ());
+        setPos(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D);
     }
 
     @Nullable
     public static ChainKnotEntity getOrNull(Level level, BlockPos pos) {
         List<ChainKnotEntity> chainKnotEntities = level.getEntitiesOfClass(ChainKnotEntity.class, new AABB(pos.getX(), pos.getY(), pos.getZ(), pos.getX(), pos.getY(), pos.getZ()).inflate(1));
         for (ChainKnotEntity chainKnotEntity : chainKnotEntities) {
-            if (chainKnotEntity.getPos().equals(pos)) {
+            if (chainKnotEntity.blockPosition().equals(pos)) {
                 return chainKnotEntity;
             }
         }
@@ -88,6 +91,10 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     @Override
     public void setChainData(HashSet<ChainData> chainDataSet) {
         this.chainDataSet = chainDataSet;
+    }
+
+    @Override
+    protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
     }
 
     @Override
@@ -194,16 +201,6 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
-    protected void recalculateBoundingBox() {
-        BlockPos attachedBlockPos = this.pos;
-        this.setPosRaw(attachedBlockPos.getX() + 0.5D, attachedBlockPos.getY() + 0.5D, attachedBlockPos.getZ() + 0.5D);
-
-        double width = getType().getWidth() / 2.0;
-        double height = getType().getHeight();
-        setBoundingBox(new AABB(getX() - width, getY(), getZ() - width, getX() + width, getY() + height, getZ() + width));
-    }
-
-    @Override
     public @NotNull AABB getBoundingBoxForCulling() {
         AABB result = super.getBoundingBoxForCulling();
         for (ChainData chainData : new HashSet<>(this.getChainDataSet())) {
@@ -215,8 +212,24 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
+    protected @NotNull AABB calculateBoundingBox(@NotNull BlockPos pos, @NotNull Direction direction) {
+        double x = pos.getX() + 0.5D;
+        double y = pos.getY() + 0.5D;
+        double z = pos.getZ() + 0.5D;
+
+        double width = this.getType().getWidth();
+        double height = this.getType().getHeight();
+        double radius = width / 2.0;
+
+        return new AABB(
+                x - radius, y, z - radius,
+                x + radius, y + height, z + radius
+        );
+    }
+
+    @Override
     public boolean survives() {
-        return this.level().getBlockState(this.getPos()).is(ModTagRegistry.CHAIN_CONNECTIBLE);
+        return this.level().getBlockState(this.blockPosition()).is(ModTagRegistry.CHAIN_CONNECTIBLE);
     }
 
     @Override
@@ -257,16 +270,16 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() {
-        int id = BuiltInRegistries.ITEM.getId(getSourceItem());
-        return new ClientboundAddEntityPacket(this, id, this.getPos());
-    }
-
-    @Override
     public void recreateFromPacket(@NotNull ClientboundAddEntityPacket packet) {
         super.recreateFromPacket(packet);
         int rawChainItemSourceId = packet.getData();
         this.sourceItem = BuiltInRegistries.ITEM.byId(rawChainItemSourceId);
+    }
+
+    @Override
+    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket(@NotNull ServerEntity entity) {
+        int id = BuiltInRegistries.ITEM.getId(this.getSourceItem());
+        return new ClientboundAddEntityPacket(this, entity, id);
     }
 
     @Override
@@ -284,15 +297,5 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
     public Vec3 getChainPos(float delta) {
         return this.getPosition(delta).add(0.0, 0.2, 0.0);
-    }
-
-    @Override
-    public int getWidth() {
-        return 9;
-    }
-
-    @Override
-    public int getHeight() {
-        return 9;
     }
 }

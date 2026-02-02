@@ -3,13 +3,22 @@ package com.evandev.connectiblechains.networking.packet;
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.client.ClientInitializer;
 import com.evandev.connectiblechains.util.Helper;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import org.jetbrains.annotations.NotNull;
 
-public record ConfigSyncPayload(float chainHangAmount, int maxChainRange, boolean collisionsEnabled) {
-    public static final ResourceLocation TYPE = Helper.identifier("s2c_config_sync_packet_id");
+public record ConfigSyncPayload(float chainHangAmount, int maxChainRange,
+                                boolean collisionsEnabled) implements CustomPacketPayload {
 
-    public ConfigSyncPayload(FriendlyByteBuf buf) {
+    public static final Type<ConfigSyncPayload> TYPE = new Type<>(Helper.identifier("s2c_config_sync_packet_id"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, ConfigSyncPayload> STREAM_CODEC = StreamCodec.of(
+            (buf, payload) -> payload.write(buf),
+            ConfigSyncPayload::new
+    );
+
+    public ConfigSyncPayload(RegistryFriendlyByteBuf buf) {
         this(buf.readFloat(), buf.readInt(), buf.readBoolean());
     }
 
@@ -28,9 +37,14 @@ public record ConfigSyncPayload(float chainHangAmount, int maxChainRange, boolea
         }
     }
 
-    public void write(FriendlyByteBuf buf) {
+    public void write(RegistryFriendlyByteBuf buf) {
         buf.writeFloat(chainHangAmount);
         buf.writeInt(maxChainRange);
         buf.writeBoolean(collisionsEnabled);
+    }
+
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

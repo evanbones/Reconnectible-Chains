@@ -6,9 +6,9 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.util.Mth;
-import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,21 +21,22 @@ public record ChainModel(float[] vertices, float[] uvs) {
 
     public void render(VertexConsumer buffer, PoseStack matrices, int bLight0, int bLight1, int sLight0, int sLight1) {
         Matrix4f modelMatrix = matrices.last().pose();
-        Matrix3f normalMatrix = matrices.last().normal();
         int count = vertices.length / 3;
         for (int i = 0; i < count; i++) {
             float f = (i % (count / 2f)) / (count / 2f);
             int blockLight = (int) Mth.lerp(f, (float) bLight0, (float) bLight1);
             int skyLight = (int) Mth.lerp(f, (float) sLight0, (float) sLight1);
             int light = LightTexture.pack(blockLight, skyLight);
+            Vector4f pos = new Vector4f(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2], 1.0F);
+            pos.mul(modelMatrix);
+
             buffer
-                    .vertex(modelMatrix, vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2])
-                    .color(0.8f, 0.8f, 0.8f, 1f)
-                    .uv(uvs[i * 2], uvs[i * 2 + 1])
-                    .overlayCoords(OverlayTexture.NO_OVERLAY)
-                    .uv2(light)
-                    .normal(normalMatrix, 1, 1, 1)
-                    .endVertex();
+                    .addVertex(pos.x, pos.y, pos.z)
+                    .setColor(0.8f, 0.8f, 0.8f, 1f)
+                    .setUv(uvs[i * 2], uvs[i * 2 + 1])
+                    .setOverlay(OverlayTexture.NO_OVERLAY)
+                    .setLight(light)
+                    .setNormal(1, 1, 1);
         }
     }
 

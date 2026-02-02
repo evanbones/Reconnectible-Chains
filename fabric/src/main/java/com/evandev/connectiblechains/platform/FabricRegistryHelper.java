@@ -16,7 +16,7 @@ public class FabricRegistryHelper implements IRegistryHelper {
     public <T extends Entity> Supplier<EntityType<T>> registerEntity(String name, Supplier<EntityType.Builder<T>> builderSupplier) {
         EntityType<T> entityType = builderSupplier.get().build(name);
 
-        Registry.register(BuiltInRegistries.ENTITY_TYPE, new ResourceLocation(CommonClass.MODID, name), entityType);
+        Registry.register(BuiltInRegistries.ENTITY_TYPE, ResourceLocation.fromNamespaceAndPath(CommonClass.MODID, name), entityType);
 
         return () -> entityType;
     }

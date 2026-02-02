@@ -7,6 +7,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
@@ -126,6 +128,10 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
         chainData.collisionStorage.clear();
     }
 
+    @Override
+    protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
+    }
+
     public @Nullable Chainable.ChainData getLink() {
         return link;
     }
@@ -205,19 +211,14 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
     }
 
     @Override
-    public @NotNull InteractionResult interact(Player player, @NotNull InteractionHand hand) {
-        player.getItemInHand(hand).is(Items.SHEARS);
+    public @NotNull InteractionResult interact(@NotNull Player player, @NotNull InteractionHand hand) {
         return InteractionResult.PASS;
     }
 
     @Override
-    protected void defineSynchedData() {
-    }
-
-    @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() {
-        int id = BuiltInRegistries.ITEM.getId(linkSourceItem);
-        return new ClientboundAddEntityPacket(this, id);
+    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket(@NotNull ServerEntity entity) {
+        int id = BuiltInRegistries.ITEM.getId(this.getLinkSourceItem());
+        return new ClientboundAddEntityPacket(this, entity, id);
     }
 
     @Override

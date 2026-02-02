@@ -33,7 +33,7 @@ public class ConnectibleChainsModClient implements ClientModInitializer {
         ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new IdentifiableResourceReloadListener() {
             @Override
             public ResourceLocation getFabricId() {
-                return new ResourceLocation(CommonClass.MODID, "chain_textures");
+                return ResourceLocation.fromNamespaceAndPath(CommonClass.MODID, "chain_textures");
             }
 
             @Override

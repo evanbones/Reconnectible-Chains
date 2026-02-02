@@ -26,8 +26,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
+import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import java.util.HashSet;
 
@@ -65,10 +67,10 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
 
     public void render(ChainKnotEntity entity, ChainKnotEntityRenderState state, PoseStack matrices, MultiBufferSource vertexConsumers, int light, float tickDelta) {
         matrices.pushPose();
-        matrices.translate(0, 0.7, 0);
+        matrices.translate(0, 0.5, 0);
         matrices.scale(5 / 6f, 1, 5 / 6f);
         VertexConsumer vertexConsumer = vertexConsumers.getBuffer(this.model.renderType(getKnotTexture(state.sourceItem)));
-        this.model.renderToBuffer(matrices, vertexConsumer, light, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
+        this.model.renderToBuffer(matrices, vertexConsumer, light, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
         matrices.popPose();
 
         HashSet<ChainKnotEntityRenderState.ChainData> chainDataSet = state.chainDataSet;
@@ -82,7 +84,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
         if (CommonClass.runtimeConfig.doDebugDraw()) {
             matrices.pushPose();
             Component holdingCount = Component.literal("C: " + chainDataSet.size());
-            this.renderNameTag(entity, holdingCount, matrices, vertexConsumers, light);
+            this.renderNameTag(entity, holdingCount, matrices, vertexConsumers, light, tickDelta);
             matrices.popPose();
         }
     }
@@ -120,17 +122,20 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
 
     private void drawDebugVector(PoseStack matrices, Vec3 startPos, Vec3 endPos, VertexConsumer buffer) {
         if (startPos == null) return;
-        var modelMat = matrices.last().pose();
+        Matrix4f matrix = matrices.last().pose();
         Vec3 vec = endPos.subtract(startPos);
         Vec3 normal = vec.normalize();
-        buffer.vertex(modelMat, 0, 0, 0)
-                .color(0, 255, 0, 255)
-                .normal((float) normal.x, (float) normal.y, (float) normal.z)
-                .endVertex();
-        buffer.vertex(modelMat, (float) vec.x, (float) vec.y, (float) vec.z)
-                .color(255, 0, 0, 255)
-                .normal((float) normal.x, (float) normal.y, (float) normal.z)
-                .endVertex();
+
+        addVertex(buffer, matrix, 0, 0, 0, 0, 255, 0, 255, normal);
+        addVertex(buffer, matrix, (float) vec.x, (float) vec.y, (float) vec.z, 255, 0, 0, 255, normal);
+    }
+
+    private void addVertex(VertexConsumer buffer, Matrix4f matrix, float x, float y, float z, int r, int g, int b, int a, Vec3 normal) {
+        Vector4f vector = new Vector4f(x, y, z, 1.0F);
+        vector.mul(matrix);
+        buffer.addVertex(vector.x, vector.y, vector.z)
+                .setColor(r, g, b, a)
+                .setNormal((float) normal.x, (float) normal.y, (float) normal.z);
     }
 
     public void updateRenderState(ChainKnotEntity entity, ChainKnotEntityRenderState state, float tickDelta) {
@@ -139,7 +144,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             Entity chainHolder = entity.getChainHolder(chainData);
             if (chainHolder == null) continue;
 
-            Vec3 offset = new Vec3(0, 0.3, 0);
+            Vec3 offset = new Vec3(0, 0.1, 0);
             Vec3 srcPos = entity.getChainPos(tickDelta);
             Vec3 dstPos;
             if (chainHolder instanceof ChainKnotEntity chainKnotEntity) {

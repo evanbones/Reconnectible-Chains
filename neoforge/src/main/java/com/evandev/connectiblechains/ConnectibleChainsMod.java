@@ -6,43 +6,40 @@ import com.evandev.connectiblechains.client.render.entity.ChainCollisionEntityRe
 import com.evandev.connectiblechains.client.render.entity.ChainKnotEntityRenderer;
 import com.evandev.connectiblechains.entity.ModEntityTypes;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
-import com.evandev.connectiblechains.platform.ForgeRegistryHelper;
+import com.evandev.connectiblechains.platform.NeoForgeNetworkHelper;
+import com.evandev.connectiblechains.platform.NeoForgeRegistryHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.EntityRenderersEvent;
-import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.player.ItemTooltipEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 @Mod(CommonClass.MODID)
 public class ConnectibleChainsMod {
-    public ConnectibleChainsMod() {
-        IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
-        ForgeRegistryHelper.ENTITIES.register(modBus);
+    public ConnectibleChainsMod(IEventBus modBus, ModContainer modContainer) {
+        NeoForgeRegistryHelper.ENTITIES.register(modBus);
 
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                ClientConfigSetup.register(ModLoadingContext.get().getActiveContainer())
-        );
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            ClientConfigSetup.register(modContainer);
+        }
 
         CommonClass.init();
 
-        modBus.addListener(this::setup);
-        MinecraftForge.EVENT_BUS.addListener(this::onRightClickBlock);
-        MinecraftForge.EVENT_BUS.addListener(this::onPlayerJoin);
-    }
+        modBus.addListener(NeoForgeNetworkHelper::register);
 
-    private void setup(final FMLCommonSetupEvent event) {
+        NeoForge.EVENT_BUS.addListener(this::onRightClickBlock);
+        NeoForge.EVENT_BUS.addListener(this::onPlayerJoin);
     }
 
     private void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
@@ -59,7 +56,7 @@ public class ConnectibleChainsMod {
         }
     }
 
-    @Mod.EventBusSubscriber(modid = CommonClass.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = CommonClass.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModBusEvents {
 
         @SubscribeEvent
@@ -93,16 +90,16 @@ public class ConnectibleChainsMod {
         }
     }
 
-    @Mod.EventBusSubscriber(modid = CommonClass.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = CommonClass.MODID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
     public static class ClientForgeEvents {
 
         @SubscribeEvent
         public static void onTooltip(ItemTooltipEvent event) {
-            ChainItemCallbacks.infoToolTip(event.getItemStack(), event.getFlags(), event.getToolTip());
+            ChainItemCallbacks.infoToolTip(event.getItemStack(), event.getContext(), event.getFlags(), event.getToolTip());
         }
 
         @SubscribeEvent
-        public static void onClientJoin(net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingIn event) {
+        public static void onClientJoin(net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingIn event) {
             CommonClass.runtimeConfig.copyFrom(CommonClass.fileConfig);
             if (ClientInitializer.getInstance() != null) {
                 ClientInitializer.getInstance().getChainKnotEntityRenderer()

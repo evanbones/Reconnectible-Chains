@@ -15,6 +15,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
@@ -114,7 +115,7 @@ public class ChainItemCallbacks {
         return found;
     }
 
-    public static void infoToolTip(ItemStack itemStack, TooltipFlag ignoredTooltipContext, List<Component> texts) {
+    public static void infoToolTip(ItemStack itemStack, Item.TooltipContext context, TooltipFlag tooltipFlag, List<Component> texts) {
         if (CommonClass.runtimeConfig.doShowToolTip()) {
             if (itemStack.is(ModTagRegistry.CATENARY_ITEMS)) {
                 if (Screen.hasShiftDown()) {

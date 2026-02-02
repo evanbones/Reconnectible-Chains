@@ -35,17 +35,17 @@ public class ChainTextureManager extends SimpleJsonResourceReloadListener {
     }
 
     private static @NotNull ResourceLocation defaultChainTextureId(ResourceLocation itemId) {
-        return new ResourceLocation(itemId.getNamespace(), "block/%s".formatted(itemId.getPath()));
+        return ResourceLocation.fromNamespaceAndPath(itemId.getNamespace(), "block/%s".formatted(itemId.getPath()));
     }
 
     private static @NotNull ResourceLocation defaultKnotTextureId(ResourceLocation itemId) {
-        return new ResourceLocation(itemId.getNamespace(), "item/%s".formatted(itemId.getPath()));
+        return ResourceLocation.fromNamespaceAndPath(itemId.getNamespace(), "item/%s".formatted(itemId.getPath()));
     }
 
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> prepared, @NotNull ResourceManager manager, @NotNull ProfilerFiller profiler) {
         clearCache();
-        this.models = prepared.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, o -> CatenaryModel.CODEC.codec().parse(JsonOps.INSTANCE, o.getValue()).get().orThrow()));
+        this.models = prepared.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, o -> CatenaryModel.CODEC.codec().parse(JsonOps.INSTANCE, o.getValue()).getOrThrow()));
     }
 
     public void clearCache() {

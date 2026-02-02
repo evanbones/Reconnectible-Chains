@@ -35,13 +35,13 @@ public class CommonClass {
 
         Services.NETWORK.registerClientReceiver(
                 ChainAttachS2CPacket.class,
-                new ResourceLocation(MODID, "s2c_chain_attach_packet_id"),
+                ResourceLocation.fromNamespaceAndPath(MODID, "s2c_chain_attach_packet_id"),
                 ChainAttachS2CPacket::new
         );
 
         Services.NETWORK.registerClientReceiver(
                 ConfigSyncPayload.class,
-                new ResourceLocation(MODID, "config_sync"),
+                ResourceLocation.fromNamespaceAndPath(MODID, "config_sync"),
                 ConfigSyncPayload::new
         );
     }

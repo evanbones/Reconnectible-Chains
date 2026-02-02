@@ -8,7 +8,7 @@ import org.joml.Vector3f;
 public class Helper {
 
     public static ResourceLocation identifier(String name) {
-        return new ResourceLocation(CommonClass.MODID, name);
+        return ResourceLocation.fromNamespaceAndPath(CommonClass.MODID, name);
     }
 
     @Deprecated
