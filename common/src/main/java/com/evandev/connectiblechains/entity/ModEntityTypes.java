@@ -11,7 +11,7 @@ public class ModEntityTypes {
 
     public static final Supplier<EntityType<ChainKnotEntity>> CHAIN_KNOT = Services.REGISTRY.registerEntity("chain_knot",
             () -> EntityType.Builder.<ChainKnotEntity>of(ChainKnotEntity::new, MobCategory.MISC)
-                    .clientTrackingRange(10)
+                    .clientTrackingRange(20)
                     .updateInterval(Integer.MAX_VALUE)
                     .sized(0.375f, 0.5F)
                     .fireImmune());

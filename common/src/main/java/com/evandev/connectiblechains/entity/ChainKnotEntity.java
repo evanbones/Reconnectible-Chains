@@ -238,6 +238,18 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
+    public boolean shouldRenderAtSqrDistance(double distance) {
+        double maxRange = Chainable.getMaxChainLength();
+        double effectiveRange = maxRange + 64.0;
+
+        if (!this.getChainDataSet().isEmpty()) {
+            return distance < effectiveRange * effectiveRange;
+        }
+
+        return super.shouldRenderAtSqrDistance(distance);
+    }
+
+    @Override
     public boolean survives() {
         return this.level().getBlockState(this.blockPosition()).is(ModTagRegistry.CHAIN_CONNECTIBLE);
     }
