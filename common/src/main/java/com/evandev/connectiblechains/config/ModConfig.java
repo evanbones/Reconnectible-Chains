@@ -13,7 +13,7 @@ public class ModConfig implements ConfigData {
 
     @ConfigEntry.Gui.Tooltip(count = 3)
     private float chainHangAmount = 8.0F;
-    @ConfigEntry.BoundedDiscrete(max = 32)
+    @ConfigEntry.BoundedDiscrete(max = 128)
     @ConfigEntry.Gui.Tooltip(count = 2)
     private int maxChainRange = 16;
     @ConfigEntry.BoundedDiscrete(min = 1, max = 8)
