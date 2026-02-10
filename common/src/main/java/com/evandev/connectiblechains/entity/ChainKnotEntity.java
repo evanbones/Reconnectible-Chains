@@ -103,6 +103,14 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
+    public void remove(@NotNull RemovalReason reason) {
+        if (!this.level().isClientSide) {
+            this.detachAllChains();
+        }
+        super.remove(reason);
+    }
+
+    @Override
     public @NotNull InteractionResult interact(Player player, @NotNull InteractionHand hand) {
         ItemStack handStack = player.getItemInHand(hand);
         if (level().isClientSide()) {
