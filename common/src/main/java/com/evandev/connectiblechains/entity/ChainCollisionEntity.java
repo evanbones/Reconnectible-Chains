@@ -31,7 +31,6 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
     @Nullable
     private Chainable.ChainData link;
     private Entity chainedEntity;
-    @NotNull
     private Item linkSourceItem;
 
     public ChainCollisionEntity(Level level, double x, double y, double z, Entity chainedEntity, @NotNull Chainable.ChainData link) {
