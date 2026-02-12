@@ -145,7 +145,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             if (chainHolder instanceof ChainKnotEntity chainKnotEntity) {
                 dstPos = chainKnotEntity.getChainPos(tickDelta);
             } else {
-                dstPos = chainHolder.getLeashOffset(tickDelta).add(chainHolder.getPosition(tickDelta));
+                dstPos = chainHolder.getRopeHoldPosition(tickDelta);
             }
 
             BlockPos blockPosOfStart = BlockPos.containing(entity.getEyePosition(tickDelta));
