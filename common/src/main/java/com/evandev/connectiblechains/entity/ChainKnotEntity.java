@@ -57,7 +57,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     public static ChainKnotEntity getOrNull(Level level, BlockPos pos) {
         List<ChainKnotEntity> chainKnotEntities = level.getEntitiesOfClass(ChainKnotEntity.class, new AABB(pos.getX(), pos.getY(), pos.getZ(), pos.getX(), pos.getY(), pos.getZ()).inflate(1));
         for (ChainKnotEntity chainKnotEntity : chainKnotEntities) {
-            if (chainKnotEntity.blockPosition().equals(pos)) {
+            if (chainKnotEntity.blockPosition().equals(pos) && !chainKnotEntity.isRemoved()) {
                 return chainKnotEntity;
             }
         }
@@ -133,7 +133,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
                 if (!player.isCreative()) handStack.shrink(1);
                 return InteractionResult.SUCCESS;
             }
-            if (handStack.is(Items.SHEARS)) return InteractionResult.CONSUME;
+            if (handStack.is(Items.SHEARS)) return InteractionResult.SUCCESS;
             return InteractionResult.PASS;
         }
 
@@ -184,7 +184,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
                 else detachAllChains();
                 this.remove(RemovalReason.DISCARDED);
                 this.dropItem(player);
-                return InteractionResult.CONSUME;
+                return InteractionResult.SUCCESS;
             }
         }
         return InteractionResult.PASS;

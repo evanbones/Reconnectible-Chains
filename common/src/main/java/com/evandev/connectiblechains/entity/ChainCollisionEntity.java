@@ -1,7 +1,7 @@
 package com.evandev.connectiblechains.entity;
 
 import com.evandev.connectiblechains.CommonClass;
-import com.evandev.connectiblechains.util.Helper;
+import com.evandev.connectiblechains.util.MathHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
@@ -101,7 +101,7 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
 
         double distance = srcPos.distanceTo(dstPos);
         double x = Mth.lerp(distancePercentage, srcPos.x(), dstPos.x());
-        double y = srcPos.y() + Helper.drip2((distancePercentage * distance), distance, dstPos.y() - srcPos.y());
+        double y = srcPos.y() + MathHelper.drip2((distancePercentage * distance), distance, dstPos.y() - srcPos.y(), chainData.getSlack());
         double z = Mth.lerp(distancePercentage, srcPos.z(), dstPos.z());
 
         y += -ModEntityTypes.CHAIN_COLLISION.get().getHeight() + 2 / 16f;

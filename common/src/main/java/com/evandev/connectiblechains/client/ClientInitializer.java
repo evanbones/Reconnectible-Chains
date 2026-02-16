@@ -3,12 +3,12 @@ package com.evandev.connectiblechains.client;
 import com.evandev.connectiblechains.client.render.entity.ChainKnotEntityRenderer;
 import com.evandev.connectiblechains.client.render.entity.catenary.CatenaryRenderer;
 import com.evandev.connectiblechains.client.render.entity.catenary.CrossCatenaryRenderer;
-import com.evandev.connectiblechains.client.render.entity.catenary.PlussCatenaryRenderer;
+import com.evandev.connectiblechains.client.render.entity.catenary.PlusCatenaryRenderer;
 import com.evandev.connectiblechains.client.render.entity.catenary.SquareCatenaryRenderer;
 import com.evandev.connectiblechains.client.render.entity.model.ChainKnotEntityModel;
 import com.evandev.connectiblechains.client.render.entity.texture.ChainTextureManager;
 import com.evandev.connectiblechains.config.ModConfig;
-import com.evandev.connectiblechains.util.Helper;
+import com.evandev.connectiblechains.util.MathHelper;
 import me.shedaniel.autoconfig.AutoConfig;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
@@ -18,7 +18,7 @@ import java.util.Optional;
 
 public class ClientInitializer {
 
-    public static final ModelLayerLocation CHAIN_KNOT = new ModelLayerLocation(Helper.identifier("chain_knot"), "main");
+    public static final ModelLayerLocation CHAIN_KNOT = new ModelLayerLocation(MathHelper.identifier("chain_knot"), "main");
     private static ClientInitializer instance;
     private final ChainTextureManager chainTextureManager = new ChainTextureManager();
     private ChainKnotEntityRenderer chainKnotEntityRenderer;
@@ -43,9 +43,9 @@ public class ClientInitializer {
     }
 
     private void registerCatenaryRenders() {
-        CatenaryRenderer.addRenderer(Helper.identifier("cross"), CrossCatenaryRenderer::new);
-        CatenaryRenderer.addRenderer(Helper.identifier("square"), SquareCatenaryRenderer::new);
-        CatenaryRenderer.addRenderer(Helper.identifier("plus"), PlussCatenaryRenderer::new);
+        CatenaryRenderer.addRenderer(MathHelper.identifier("cross"), CrossCatenaryRenderer::new);
+        CatenaryRenderer.addRenderer(MathHelper.identifier("square"), SquareCatenaryRenderer::new);
+        CatenaryRenderer.addRenderer(MathHelper.identifier("plus"), PlusCatenaryRenderer::new);
     }
 
     public Optional<ChainKnotEntityRenderer> getChainKnotEntityRenderer() {

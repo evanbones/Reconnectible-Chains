@@ -68,6 +68,7 @@ public interface Chainable {
                 }
 
                 if (newChainData != null) {
+                    if (compound.contains("Slack")) newChainData.customSlack = compound.getFloat("Slack");
                     result.add(newChainData);
                 }
             }
@@ -87,6 +88,7 @@ public interface Chainable {
                     Entity chainHolder = serverWorld.getEntity(optionalUUID.get());
                     if (chainHolder != null) {
                         ChainData newChainData = new ChainData(chainHolder, chainData.sourceItem);
+                        newChainData.customSlack = chainData.customSlack;
                         entity.replaceChainData(chainData, null);
                         attachChain(entity, newChainData, null, true);
                     }
@@ -100,6 +102,7 @@ public interface Chainable {
                     ChainKnotEntity chainHolder = ChainKnotEntity.getOrNull(serverWorld, targetPos);
                     if (chainHolder != null) {
                         ChainData newChainData = new ChainData(chainHolder, chainData.sourceItem);
+                        newChainData.customSlack = chainData.customSlack;
                         entity.replaceChainData(chainData, null);
                         attachChain(entity, newChainData, null, true);
                     }
@@ -209,7 +212,9 @@ public interface Chainable {
         if (chainData.unresolvedChainHolderId != 0 && entity.level().isClientSide) {
             Entity chainHolder = entity.level().getEntity(chainData.unresolvedChainHolderId);
             if (chainHolder != null) {
-                entity.replaceChainData(chainData, new ChainData(chainHolder, chainData.sourceItem));
+                ChainData newData = new ChainData(chainHolder, chainData.sourceItem);
+                newData.customSlack = chainData.customSlack;
+                entity.replaceChainData(chainData, newData);
             }
         }
 
@@ -274,6 +279,7 @@ public interface Chainable {
                     CompoundTag nbtCompound = new CompoundTag();
                     nbtCompound.putUUID("UUID", uuid);
                     nbtCompound.putString(SOURCE_ITEM_KEY, sourceItem);
+                    nbtCompound.putFloat("Slack", chainData.customSlack);
                     return nbtCompound;
                 }, blockPos -> {
                     CompoundTag nbtCompound = new CompoundTag();
@@ -281,6 +287,7 @@ public interface Chainable {
                     nbtCompound.putInt("RelY", blockPos.getY());
                     nbtCompound.putInt("RelZ", blockPos.getZ());
                     nbtCompound.putString(SOURCE_ITEM_KEY, sourceItem);
+                    nbtCompound.putFloat("Slack", chainData.customSlack);
                     return nbtCompound;
                 }));
             }
@@ -365,6 +372,7 @@ public interface Chainable {
         private final Entity chainHolder;
         @Nullable
         public Either<UUID, BlockPos> unresolvedChainData;
+        public float customSlack = -1f;
         private boolean isDead = false;
 
         public ChainData(@Nullable Either<UUID, BlockPos> unresolvedChainData, @NotNull Item sourceItem) {
@@ -388,6 +396,10 @@ public interface Chainable {
             this.unresolvedChainData = null;
         }
 
+        public float getSlack() {
+            return customSlack < 0 ? CommonClass.runtimeConfig.getChainHangAmount() : customSlack;
+        }
+
         public SoundType getSourceBlockSoundGroup() {
             return Chainable.getSourceBlockSoundGroup(sourceItem);
         }
@@ -399,10 +411,17 @@ public interface Chainable {
         @Override
         public boolean equals(Object o) {
             if (!(o instanceof ChainData chainData)) return false;
+            if (this.sourceItem != chainData.sourceItem) return false;
+
             int thisId = getHolderId();
             int thatId = chainData.getHolderId();
             if (thisId != 0 && thisId == thatId) return true;
             return unresolvedChainData != null && unresolvedChainData.equals(chainData.unresolvedChainData);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(getHolderId(), unresolvedChainData, sourceItem);
         }
 
         public void kill() {
@@ -414,11 +433,6 @@ public interface Chainable {
             return !isDead;
         }
 
-        @Override
-        public int hashCode() {
-            return Objects.hash(getHolderId(), unresolvedChainData);
-        }
-
         public void applyRotation(Rotation rotation) {
             if (unresolvedChainData != null) {
                 unresolvedChainData = unresolvedChainData.mapRight(blockPos -> blockPos.rotate(rotation));
@@ -427,7 +441,7 @@ public interface Chainable {
 
         @Override
         public String toString() {
-            return "ChainData{" + "collisionStorage=" + collisionStorage + ", unresolvedChainData=" + unresolvedChainData + ", sourceItem=" + sourceItem + ", unresolvedChainHolderId=" + unresolvedChainHolderId + ", chainHolder=" + chainHolder + '}';
+            return "ChainData{" + "collisionStorage=" + collisionStorage + ", unresolvedChainData=" + unresolvedChainData + ", sourceItem=" + sourceItem + ", unresolvedChainHolderId=" + unresolvedChainHolderId + ", chainHolder=" + chainHolder + ", customSlack=" + customSlack + '}';
         }
     }
 }

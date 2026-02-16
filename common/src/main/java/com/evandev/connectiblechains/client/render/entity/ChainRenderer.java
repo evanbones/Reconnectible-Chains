@@ -3,7 +3,6 @@ package com.evandev.connectiblechains.client.render.entity;
 import com.evandev.connectiblechains.client.render.entity.catenary.CatenaryRenderer;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
 import java.util.LinkedHashMap;
@@ -21,22 +20,15 @@ public class ChainRenderer {
         }
     };
 
-    public void renderBaked(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack matrices, BakeKey ignoredOldKey, Vector3f chainVec, int blockLight0, int blockLight1, int skyLight0, int skyLight1) {
-        BakeKey key = new BakeKey(chainVec);
+    public void renderBaked(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack matrices, Vector3f chainVec, float slack, int blockLight0, int blockLight1, int skyLight0, int skyLight1) {
+        BakeKey key = new BakeKey(chainVec, renderer, slack);
 
-        ChainModel model;
-        if (models.containsKey(key)) {
-            model = models.get(key);
-        } else {
-            model = renderer.buildModel(chainVec);
-            models.put(key, model);
-        }
-
+        ChainModel model = models.computeIfAbsent(key, k -> renderer.buildModel(chainVec, slack));
         model.render(buffer, matrices, blockLight0, blockLight1, skyLight0, skyLight1);
     }
 
-    public void render(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack matrices, Vector3f chainVec, int blockLight0, int blockLight1, int skyLight0, int skyLight1) {
-        ChainModel model = renderer.buildModel(chainVec);
+    public void render(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack matrices, Vector3f chainVec, float slack, int blockLight0, int blockLight1, int skyLight0, int skyLight1) {
+        ChainModel model = renderer.buildModel(chainVec, slack);
         model.render(buffer, matrices, blockLight0, blockLight1, skyLight0, skyLight1);
     }
 
@@ -46,25 +38,33 @@ public class ChainRenderer {
 
     public static class BakeKey {
         private final Vector3f chainVec;
+        private final Class<? extends CatenaryRenderer> rendererClass;
+        private final UVRect sideA;
+        private final UVRect sideB;
+        private final float slack;
 
-        public BakeKey(Vector3f chainVec) {
+        public BakeKey(Vector3f chainVec, CatenaryRenderer renderer, float slack) {
             this.chainVec = new Vector3f(chainVec);
-        }
-
-        public BakeKey(Vec3 srcPos, Vec3 dstPos) {
-            this.chainVec = new Vector3f((float) (dstPos.x - srcPos.x), (float) (dstPos.y - srcPos.y), (float) (dstPos.z - srcPos.z));
+            this.rendererClass = renderer.getClass();
+            this.sideA = renderer.getSideA();
+            this.sideB = renderer.getSideB();
+            this.slack = slack;
         }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (!(o instanceof BakeKey bakeKey)) return false;
-            return Objects.equals(chainVec, bakeKey.chainVec);
+            return Float.compare(bakeKey.slack, slack) == 0 &&
+                    Objects.equals(chainVec, bakeKey.chainVec) &&
+                    Objects.equals(rendererClass, bakeKey.rendererClass) &&
+                    Objects.equals(sideA, bakeKey.sideA) &&
+                    Objects.equals(sideB, bakeKey.sideB);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(chainVec);
+            return Objects.hash(chainVec, rendererClass, sideA, sideB, slack);
         }
     }
 }

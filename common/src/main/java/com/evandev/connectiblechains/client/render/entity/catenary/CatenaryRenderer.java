@@ -31,7 +31,15 @@ public abstract class CatenaryRenderer {
         return renderers.getOrDefault(id, CrossCatenaryRenderer::new).apply(uvRects.getFirst(), uvRects.getSecond());
     }
 
-    public abstract ChainModel buildModel(Vector3f chainVec);
+    public UVRect getSideA() {
+        return SIDE_A;
+    }
+
+    public UVRect getSideB() {
+        return SIDE_B;
+    }
+
+    public abstract ChainModel buildModel(Vector3f chainVec, float slack);
 
     protected float estimateDeltaX(float s, float k) {
         return (float) (s / Math.sqrt(1 + k * k));

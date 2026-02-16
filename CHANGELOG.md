@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-16
+
+### Added
+
+- Slack can now be adjusted on a per-chain basis by right-clicking or shift right-clicking the chain length with Shears.
+
+### Fixed
+
+- Fixed odd lighting on certain Chain types.
+- Fixed modded Chains sometimes not resetting their models properly.
+
 ## [1.0.3] - 2026-02-12
 
 ### Fixed

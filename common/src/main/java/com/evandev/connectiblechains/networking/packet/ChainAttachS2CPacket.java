@@ -1,7 +1,7 @@
 package com.evandev.connectiblechains.networking.packet;
 
 import com.evandev.connectiblechains.entity.Chainable;
-import com.evandev.connectiblechains.util.Helper;
+import com.evandev.connectiblechains.util.MathHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -15,7 +15,7 @@ import org.jetbrains.annotations.Nullable;
 public record ChainAttachS2CPacket(int attachedEntityId, int oldHoldingEntityId, int newHoldingEntityId,
                                    int chainTypeId) implements CustomPacketPayload {
 
-    public static final Type<ChainAttachS2CPacket> TYPE = new Type<>(Helper.identifier("s2c_chain_attach_packet_id"));
+    public static final Type<ChainAttachS2CPacket> TYPE = new Type<>(MathHelper.identifier("s2c_chain_attach_packet_id"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ChainAttachS2CPacket> STREAM_CODEC = CustomPacketPayload.codec(
             ChainAttachS2CPacket::write,

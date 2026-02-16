@@ -4,6 +4,7 @@ import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.entity.ChainKnotEntity;
 import com.evandev.connectiblechains.entity.Chainable;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
+import com.evandev.connectiblechains.util.ChainRaycastHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -31,6 +32,10 @@ public class ChainItemCallbacks {
 
     public static InteractionResult chainUseEvent(Player player, Level level, InteractionHand hand, BlockHitResult hitResult) {
         if (player == null || player.isCrouching()) return InteractionResult.PASS;
+
+        if (ChainRaycastHelper.tryAdjustSlack(player, hand)) {
+            return InteractionResult.SUCCESS;
+        }
 
         ItemStack stack = player.getItemInHand(hand);
         BlockPos blockPos = hitResult.getBlockPos();
