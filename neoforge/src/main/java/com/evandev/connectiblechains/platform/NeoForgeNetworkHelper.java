@@ -1,6 +1,7 @@
 package com.evandev.connectiblechains.platform;
 
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
+import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
 import com.evandev.connectiblechains.platform.services.INetworkHelper;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -22,27 +23,24 @@ public class NeoForgeNetworkHelper implements INetworkHelper {
         registrar.playToClient(
                 ChainAttachS2CPacket.TYPE,
                 ChainAttachS2CPacket.STREAM_CODEC,
-                (payload, context) -> {
-                    context.enqueueWork(() -> {
-                        ChainAttachS2CPacket.handle(payload, context.player());
-                    });
-                }
+                (payload, context) -> context.enqueueWork(() -> ChainAttachS2CPacket.handle(payload, context.player()))
         );
 
         registrar.playToClient(
                 ConfigSyncPayload.TYPE,
                 ConfigSyncPayload.STREAM_CODEC,
-                (payload, context) -> {
-                    context.enqueueWork(() -> {
-                        ConfigSyncPayload.handle(payload);
-                    });
-                }
+                (payload, context) -> context.enqueueWork(() -> ConfigSyncPayload.handle(payload))
+        );
+
+        registrar.playToClient(
+                ChainSlackSyncS2CPacket.TYPE,
+                ChainSlackSyncS2CPacket.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ChainSlackSyncS2CPacket.handle(payload, context.player()))
         );
     }
 
     @Override
     public <T> void registerClientReceiver(Class<T> type, ResourceLocation id, Function<RegistryFriendlyByteBuf, T> decoder) {
-
     }
 
     @Override

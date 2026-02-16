@@ -2,15 +2,10 @@ package com.evandev.connectiblechains;
 
 import com.evandev.connectiblechains.config.ModConfig;
 import com.evandev.connectiblechains.entity.ModEntityTypes;
-import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
-import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
-import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
-import com.evandev.connectiblechains.platform.Services;
 import com.mojang.logging.LogUtils;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.ConfigHolder;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionResult;
 import org.slf4j.Logger;
 
@@ -33,23 +28,5 @@ public class CommonClass {
             runtimeConfig.copyFrom(config);
             return InteractionResult.PASS;
         });
-
-        Services.NETWORK.registerClientReceiver(
-                ChainAttachS2CPacket.class,
-                ResourceLocation.fromNamespaceAndPath(MODID, "s2c_chain_attach_packet_id"),
-                ChainAttachS2CPacket::new
-        );
-
-        Services.NETWORK.registerClientReceiver(
-                ConfigSyncPayload.class,
-                ResourceLocation.fromNamespaceAndPath(MODID, "config_sync"),
-                ConfigSyncPayload::new
-        );
-
-        Services.NETWORK.registerClientReceiver(
-                ChainSlackSyncS2CPacket.class,
-                ResourceLocation.fromNamespaceAndPath(MODID, "s2c_chain_slack_packet_id"),
-                ChainSlackSyncS2CPacket::new
-        );
     }
 }

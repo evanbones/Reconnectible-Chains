@@ -2,32 +2,31 @@ package com.evandev.connectiblechains.networking.packet;
 
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.client.ClientInitializer;
-import com.evandev.connectiblechains.util.MathHelper;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 
 public record ConfigSyncPayload(float chainHangAmount, int maxChainRange,
                                 boolean collisionsEnabled) implements CustomPacketPayload {
 
-    public static final Type<ConfigSyncPayload> TYPE = new Type<>(MathHelper.identifier("s2c_config_sync_packet_id"));
+    public static final CustomPacketPayload.Type<ConfigSyncPayload> TYPE = new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(CommonClass.MODID, "config_sync"));
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, ConfigSyncPayload> STREAM_CODEC = StreamCodec.of(
-            (buf, payload) -> payload.write(buf),
+    public static final StreamCodec<ByteBuf, ConfigSyncPayload> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.FLOAT, ConfigSyncPayload::chainHangAmount,
+            ByteBufCodecs.INT, ConfigSyncPayload::maxChainRange,
+            ByteBufCodecs.BOOL, ConfigSyncPayload::collisionsEnabled,
             ConfigSyncPayload::new
     );
-
-    public ConfigSyncPayload(RegistryFriendlyByteBuf buf) {
-        this(buf.readFloat(), buf.readInt(), buf.readBoolean());
-    }
 
     public static void handle(ConfigSyncPayload payload) {
         try {
             CommonClass.LOGGER.info("Received {} config from server", CommonClass.MODID);
-            CommonClass.runtimeConfig.setChainHangAmount(payload.chainHangAmount);
-            CommonClass.runtimeConfig.setMaxChainRange(payload.maxChainRange);
-            CommonClass.runtimeConfig.setCollisionsEnabled(payload.collisionsEnabled);
+            CommonClass.runtimeConfig.setChainHangAmount(payload.chainHangAmount());
+            CommonClass.runtimeConfig.setMaxChainRange(payload.maxChainRange());
+            CommonClass.runtimeConfig.setCollisionsEnabled(payload.collisionsEnabled());
 
             if (ClientInitializer.getInstance() != null) {
                 ClientInitializer.getInstance().getChainKnotEntityRenderer().ifPresent(r -> r.getChainRenderer().purge());
@@ -35,12 +34,6 @@ public record ConfigSyncPayload(float chainHangAmount, int maxChainRange,
         } catch (Exception e) {
             CommonClass.LOGGER.error("Could not deserialize config: ", e);
         }
-    }
-
-    public void write(RegistryFriendlyByteBuf buf) {
-        buf.writeFloat(chainHangAmount);
-        buf.writeInt(maxChainRange);
-        buf.writeBoolean(collisionsEnabled);
     }
 
     @Override

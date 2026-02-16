@@ -2,17 +2,23 @@ package com.evandev.connectiblechains.networking.packet;
 
 import com.evandev.connectiblechains.entity.Chainable;
 import com.evandev.connectiblechains.util.MathHelper;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import org.jetbrains.annotations.NotNull;
 
-public record ChainSlackSyncS2CPacket(int entityId, int holderId, float slack) {
-    public static final ResourceLocation TYPE = MathHelper.identifier("s2c_chain_slack_sync");
+public record ChainSlackSyncS2CPacket(int entityId, int holderId, float slack) implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<ChainSlackSyncS2CPacket> TYPE = new CustomPacketPayload.Type<>(MathHelper.identifier("s2c_chain_slack_sync"));
 
-    public ChainSlackSyncS2CPacket(FriendlyByteBuf buf) {
-        this(buf.readInt(), buf.readInt(), buf.readFloat());
-    }
+    public static final StreamCodec<ByteBuf, ChainSlackSyncS2CPacket> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT, ChainSlackSyncS2CPacket::entityId,
+            ByteBufCodecs.INT, ChainSlackSyncS2CPacket::holderId,
+            ByteBufCodecs.FLOAT, ChainSlackSyncS2CPacket::slack,
+            ChainSlackSyncS2CPacket::new
+    );
 
     public static void handle(ChainSlackSyncS2CPacket packet, Player player) {
         if (player.level().getEntity(packet.entityId()) instanceof Chainable chainable) {
@@ -26,9 +32,8 @@ public record ChainSlackSyncS2CPacket(int entityId, int holderId, float slack) {
         }
     }
 
-    public void write(FriendlyByteBuf buf) {
-        buf.writeInt(entityId);
-        buf.writeInt(holderId);
-        buf.writeFloat(slack);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -63,7 +64,8 @@ public class ChainRaycastHelper {
             }
 
             if (!player.isCreative()) {
-                stack.hurtAndBreak(1, player, (p) -> p.broadcastBreakEvent(hand));
+                EquipmentSlot slot = hand == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND;
+                stack.hurtAndBreak(1, player, slot);
             }
         }
         return true;

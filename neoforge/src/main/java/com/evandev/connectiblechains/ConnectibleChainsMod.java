@@ -42,7 +42,6 @@ public class ConnectibleChainsMod {
         NeoForge.EVENT_BUS.addListener(this::onRightClickBlock);
         NeoForge.EVENT_BUS.addListener(this::onPlayerJoin);
         NeoForge.EVENT_BUS.addListener(this::onRightClickItem);
-        NeoForge.EVENT_BUS.addListener(this::onRightClickEmpty);
     }
 
     private void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
@@ -60,13 +59,6 @@ public class ConnectibleChainsMod {
     }
 
     private void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        if (ChainRaycastHelper.tryAdjustSlack(event.getEntity(), event.getHand())) {
-            event.setCanceled(true);
-            event.setCancellationResult(InteractionResult.SUCCESS);
-        }
-    }
-
-    private void onRightClickEmpty(PlayerInteractEvent.RightClickEmpty event) {
         if (ChainRaycastHelper.tryAdjustSlack(event.getEntity(), event.getHand())) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);

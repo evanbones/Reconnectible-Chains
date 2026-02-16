@@ -5,6 +5,10 @@ import com.evandev.connectiblechains.client.render.entity.ChainCollisionEntityRe
 import com.evandev.connectiblechains.client.render.entity.ChainKnotEntityRenderer;
 import com.evandev.connectiblechains.entity.ModEntityTypes;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
+import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
+import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
+import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
+import com.evandev.connectiblechains.platform.FabricClientNetworkHelper;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -29,6 +33,10 @@ public class ConnectibleChainsModClient implements ClientModInitializer {
         new ClientInitializer().onInitializeClient();
 
         ItemTooltipCallback.EVENT.register(ChainItemCallbacks::infoToolTip);
+
+        FabricClientNetworkHelper.registerClientReceiver(ChainAttachS2CPacket.class);
+        FabricClientNetworkHelper.registerClientReceiver(ConfigSyncPayload.class);
+        FabricClientNetworkHelper.registerClientReceiver(ChainSlackSyncS2CPacket.class);
 
         ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new IdentifiableResourceReloadListener() {
             @Override
