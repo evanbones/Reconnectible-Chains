@@ -19,10 +19,11 @@ see [this mod's issue tracker](https://github.com/evanbones/Reconnectible-Chains
 ## What's New?
 
 * Native Forge/NeoForge port.
-* Added config options to disable chain collisions and debug rendering.
+* Adjust slack on a per-chain basis by right-clicking with Shears.
+* Added new config options to disable chain collisions and increased max chain length.
 * You can now punch knots directly to break them.
 * Knots break instantly instead of waiting a couple seconds.
-* Using shears to break knots now reduces its durability.
+* Using Shears to break knots now reduces its durability.
 * Safer knot discarding, should fix issues with knots across chunk borders.
 * Additional safety checks for collision entities on dedicated servers.
 
@@ -42,3 +43,7 @@ adding additional mod compatibility.
 ## License
 
 [![Code license (LGPL)](https://img.shields.io/badge/code%20license-LGPL-green.svg?style=flat-square)](https://github.com/evanbones/Reconnectible-Chains/blob/main/LICENSE)
+
+---
+
+[![discord-plural](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/compact/social/discord-plural_vector.svg)](https://discord.com/invite/JcGRdT6Pbx) [![github-plural](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/compact/social/github-plural_vector.svg)](https://github.com/evanbones/Reconnectible-Chains)

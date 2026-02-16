@@ -2,12 +2,12 @@ package com.evandev.connectiblechains.networking.packet;
 
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.client.ClientInitializer;
-import com.evandev.connectiblechains.util.Helper;
+import com.evandev.connectiblechains.util.MathHelper;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 
 public record ConfigSyncPayload(float chainHangAmount, int maxChainRange, boolean collisionsEnabled) {
-    public static final ResourceLocation TYPE = Helper.identifier("s2c_config_sync_packet_id");
+    public static final ResourceLocation TYPE = MathHelper.identifier("s2c_config_sync_packet_id");
 
     public ConfigSyncPayload(FriendlyByteBuf buf) {
         this(buf.readFloat(), buf.readInt(), buf.readBoolean());

@@ -1,7 +1,7 @@
 package com.evandev.connectiblechains.networking.packet;
 
 import com.evandev.connectiblechains.entity.Chainable;
-import com.evandev.connectiblechains.util.Helper;
+import com.evandev.connectiblechains.util.MathHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -11,7 +11,7 @@ import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.Nullable;
 
 public record ChainAttachS2CPacket(int attachedEntityId, int oldHoldingEntityId, int newHoldingEntityId, int chainTypeId) {
-    public static final ResourceLocation TYPE = Helper.identifier("s2c_chain_attach_packet_id");
+    public static final ResourceLocation TYPE = MathHelper.identifier("s2c_chain_attach_packet_id");
 
     public ChainAttachS2CPacket(Entity attachedEntity, @Nullable Entity oldHoldingEntity, @Nullable Entity newHoldingEntity, Item souceItem) {
         this(attachedEntity.getId(), oldHoldingEntity != null ? oldHoldingEntity.getId() : 0, newHoldingEntity != null ? newHoldingEntity.getId() : 0, BuiltInRegistries.ITEM.getId(souceItem));

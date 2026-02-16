@@ -109,10 +109,9 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
         CatenaryRenderer renderer = getCatenaryRenderer(sourceItem);
 
         if (chainData.useBaked) {
-            ChainRenderer.BakeKey key = new ChainRenderer.BakeKey(startPos, endPos);
-            chainRenderer.renderBaked(renderer, vertexConsumer, matrices, key, chainVec, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight);
+            chainRenderer.renderBaked(renderer, vertexConsumer, matrices, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight);
         } else {
-            chainRenderer.render(renderer, vertexConsumer, matrices, chainVec, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight);
+            chainRenderer.render(renderer, vertexConsumer, matrices, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight);
         }
 
         matrices.popPose();
@@ -162,6 +161,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             renderChainData.chainHolderSkyLight = level.getBrightness(LightLayer.SKY, blockPosOfEnd);
             renderChainData.sourceItem = chainData.sourceItem;
             renderChainData.useBaked = chainHolder instanceof HangingEntity;
+            renderChainData.slack = chainData.getSlack();
             result.add(renderChainData);
         }
         state.chainDataSet = result;

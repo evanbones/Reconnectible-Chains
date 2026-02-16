@@ -6,8 +6,8 @@ import com.evandev.connectiblechains.client.render.entity.UVRect;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-import static com.evandev.connectiblechains.util.Helper.drip2;
-import static com.evandev.connectiblechains.util.Helper.drip2prime;
+import static com.evandev.connectiblechains.util.MathHelper.drip2;
+import static com.evandev.connectiblechains.util.MathHelper.drip2prime;
 
 public class SquareCatenaryRenderer extends CatenaryRenderer {
     public static final float SQRT_2 = (float) Math.sqrt(2);
@@ -18,7 +18,7 @@ public class SquareCatenaryRenderer extends CatenaryRenderer {
     }
 
     @Override
-    public ChainModel buildModel(Vector3f chainVec) {
+    public ChainModel buildModel(Vector3f chainVec, float slack) {
         float desiredSegmentLength = 1f / CommonClass.runtimeConfig.getQuality();
         int initialCapacity = (int) (4f * chainVec.length() / desiredSegmentLength);
         ChainModel.Builder builder = ChainModel.builder(initialCapacity);
@@ -26,16 +26,12 @@ public class SquareCatenaryRenderer extends CatenaryRenderer {
         if (chainVec.x() == 0F && chainVec.z() == 0F) {
             buildFaceVertical(builder, chainVec);
         } else {
-            buildFace(builder, chainVec);
+            buildFace(builder, chainVec, slack);
         }
 
         return builder.build();
     }
 
-
-    /**
-     * {@link #buildFace} does not work when {@code endPosition} is pointing straight up or down.
-     */
     private void buildFaceVertical(ChainModel.Builder builder, Vector3f endPosition) {
         endPosition.x = 0F;
         endPosition.z = 0F;
@@ -57,34 +53,19 @@ public class SquareCatenaryRenderer extends CatenaryRenderer {
         Vector3f vert10B = new Vector3f(-normalB.x(), endPosition.y(), -normalB.z());
         Vector3f vert11B = new Vector3f(normalB.x(), endPosition.y(), normalB.z());
 
+        float f0 = 0F, f1 = 1F;
         float uvv0 = 0F, uvv1 = Math.abs(endPosition.y()) / CHAIN_SCALE;
-        build4Sides(builder, uvv0, uvv1, vert00A, vert01A, vert10A, vert11A, vert00B, vert01B, vert10B, vert11B);
+        build4Sides(builder, f0, f1, uvv0, uvv1, vert00A, vert01A, vert10A, vert11A, vert00B, vert01B, vert10B, vert11B);
     }
 
-    /**
-     * Creates geometry from the origin to {@code endPosition} with the specified {@code angle}.
-     * It uses an iterative approach meaning that it adds geometry until it's at the end or
-     * has reached {@link #MAX_SEGMENTS}.
-     * The model is always generated along the local X axis and curves along the Y axis.
-     * This makes the calculation a lot simpler as we are only dealing with 2d coordinates.
-     *
-     * @param builder     The target builder
-     * @param endPosition The end position in relation to the origin
-     */
-    private void buildFace(ChainModel.Builder builder, Vector3f endPosition) {
+    private void buildFace(ChainModel.Builder builder, Vector3f endPosition, float slack) {
         float desiredSegmentLength = 1f / CommonClass.runtimeConfig.getQuality();
-        // Distance XYZ
         float distance = endPosition.length();
-        // Distance XZ
         float distanceXZ = (float) Math.sqrt(Math.fma(endPosition.x(), endPosition.x(), endPosition.z() * endPosition.z()));
-        // Original code used total distance between start and end instead of horizontal distance
-        // That changed the look of chains when there was a big height difference, but it looks better.
         final float wrongDistanceFactor = distance / distanceXZ;
         final float chainHalfWidthA = (SIDE_A.x1() - SIDE_A.x0()) / 32F * CHAIN_SCALE;
         final float chainHalfWidthB = (SIDE_B.x1() - SIDE_B.x0()) / 32F * CHAIN_SCALE;
         Vector3f normal = new Vector3f(), rotAxis = new Vector3f();
-        // 00, 01, 11, 11 refers to the X and Y position of the vertex.
-        // 00 is the lower X and Y vertex. 10 Has the same y value as 00 but a higher x value.
         Vector3f vert00A = new Vector3f();
         Vector3f vert01A = new Vector3f();
         Vector3f vert11A = new Vector3f();
@@ -100,11 +81,16 @@ public class SquareCatenaryRenderer extends CatenaryRenderer {
         float uvv1 = 0;
         float uvv0;
         float x = 0;
+        float f0, f1 = 0;
         for (int segment = 0; segment < MAX_SEGMENTS; segment++) {
-            float gradient = (float) drip2prime(x * wrongDistanceFactor, distance, endPosition.y());
+            float gradient = (float) drip2prime(x * wrongDistanceFactor, distance, endPosition.y(), slack);
             x += estimateDeltaX(desiredSegmentLength, gradient);
             x = Math.min(distanceXZ, x);
-            float y = (float) drip2(x * wrongDistanceFactor, distance, endPosition.y());
+
+            f0 = f1;
+            f1 = x / distanceXZ;
+
+            float y = (float) drip2(x * wrongDistanceFactor, distance, endPosition.y(), slack);
             segmentEnd.set(x, y, 0);
 
             rotAxis.set(segmentEnd.x() - segmentStart.x(), segmentEnd.y() - segmentStart.y(), segmentEnd.z() - segmentStart.z());
@@ -112,7 +98,6 @@ public class SquareCatenaryRenderer extends CatenaryRenderer {
             rotatorA = rotatorA.fromAxisAngleDeg(rotAxis, 45);
             rotatorB = rotatorB.fromAxisAngleDeg(rotAxis, -45);
 
-            // This normal is orthogonal to the face normal
             normal.set(-gradient, Math.abs(distanceXZ / distance), 0);
             Vector3f normalA = new Vector3f(), normalB = new Vector3f();
             normal.rotate(rotatorA, normalA);
@@ -121,7 +106,6 @@ public class SquareCatenaryRenderer extends CatenaryRenderer {
             normalB.normalize(chainHalfWidthB * SQRT_2);
 
             if (segment == 0) {
-                //first iteration, thus the previous one does not yet exist.
                 vert00A.set(segmentStart).sub(normalA);
                 vert01A.set(segmentStart).add(normalA);
                 vert00B.set(segmentStart).sub(normalB);
@@ -142,7 +126,7 @@ public class SquareCatenaryRenderer extends CatenaryRenderer {
             uvv0 = uvv1;
             uvv1 = uvv0 + actualSegmentLength / CHAIN_SCALE;
 
-            build4Sides(builder, uvv0, uvv1, vert00A, vert01A, vert10A, vert11A, vert00B, vert01B, vert10B, vert11B);
+            build4Sides(builder, f0, f1, uvv0, uvv1, vert00A, vert01A, vert10A, vert11A, vert00B, vert01B, vert10B, vert11B);
 
             if (x >= distanceXZ) {
                 break;
@@ -151,25 +135,25 @@ public class SquareCatenaryRenderer extends CatenaryRenderer {
         }
     }
 
-    private void build4Sides(ChainModel.Builder builder, float uvv0, float uvv1, Vector3f vert00A, Vector3f vert01A, Vector3f vert10A, Vector3f vert11A, Vector3f vert00B, Vector3f vert01B, Vector3f vert10B, Vector3f vert11B) {
-        builder.vertex(vert00A).uv(SIDE_A.x0() / 16f, uvv0).next();
-        builder.vertex(vert01B).uv(SIDE_A.x1() / 16f, uvv0).next();
-        builder.vertex(vert11B).uv(SIDE_A.x1() / 16f, uvv1).next();
-        builder.vertex(vert10A).uv(SIDE_A.x0() / 16f, uvv1).next();
+    private void build4Sides(ChainModel.Builder builder, float f0, float f1, float uvv0, float uvv1, Vector3f vert00A, Vector3f vert01A, Vector3f vert10A, Vector3f vert11A, Vector3f vert00B, Vector3f vert01B, Vector3f vert10B, Vector3f vert11B) {
+        builder.fraction(f0).vertex(vert00A).uv(SIDE_A.x0() / 16f, uvv0).next();
+        builder.fraction(f0).vertex(vert01B).uv(SIDE_A.x1() / 16f, uvv0).next();
+        builder.fraction(f1).vertex(vert11B).uv(SIDE_A.x1() / 16f, uvv1).next();
+        builder.fraction(f1).vertex(vert10A).uv(SIDE_A.x0() / 16f, uvv1).next();
 
-        builder.vertex(vert00A).uv(SIDE_B.x0() / 16f, uvv0).next();
-        builder.vertex(vert00B).uv(SIDE_B.x1() / 16f, uvv0).next();
-        builder.vertex(vert10B).uv(SIDE_B.x1() / 16f, uvv1).next();
-        builder.vertex(vert10A).uv(SIDE_B.x0() / 16f, uvv1).next();
+        builder.fraction(f0).vertex(vert00A).uv(SIDE_B.x0() / 16f, uvv0).next();
+        builder.fraction(f0).vertex(vert00B).uv(SIDE_B.x1() / 16f, uvv0).next();
+        builder.fraction(f1).vertex(vert10B).uv(SIDE_B.x1() / 16f, uvv1).next();
+        builder.fraction(f1).vertex(vert10A).uv(SIDE_B.x0() / 16f, uvv1).next();
 
-        builder.vertex(vert00B).uv(SIDE_A.x1() / 16f, uvv0).next();
-        builder.vertex(vert01A).uv(SIDE_A.x0() / 16f, uvv0).next();
-        builder.vertex(vert11A).uv(SIDE_A.x0() / 16f, uvv1).next();
-        builder.vertex(vert10B).uv(SIDE_A.x1() / 16f, uvv1).next();
+        builder.fraction(f0).vertex(vert00B).uv(SIDE_A.x1() / 16f, uvv0).next();
+        builder.fraction(f0).vertex(vert01A).uv(SIDE_A.x0() / 16f, uvv0).next();
+        builder.fraction(f1).vertex(vert11A).uv(SIDE_A.x0() / 16f, uvv1).next();
+        builder.fraction(f1).vertex(vert10B).uv(SIDE_A.x1() / 16f, uvv1).next();
 
-        builder.vertex(vert01A).uv(SIDE_B.x0() / 16f, uvv0).next();
-        builder.vertex(vert01B).uv(SIDE_B.x1() / 16f, uvv0).next();
-        builder.vertex(vert11B).uv(SIDE_B.x1() / 16f, uvv1).next();
-        builder.vertex(vert11A).uv(SIDE_B.x0() / 16f, uvv1).next();
+        builder.fraction(f0).vertex(vert01A).uv(SIDE_B.x0() / 16f, uvv0).next();
+        builder.fraction(f0).vertex(vert01B).uv(SIDE_B.x1() / 16f, uvv0).next();
+        builder.fraction(f1).vertex(vert11B).uv(SIDE_B.x1() / 16f, uvv1).next();
+        builder.fraction(f1).vertex(vert11A).uv(SIDE_B.x0() / 16f, uvv1).next();
     }
 }

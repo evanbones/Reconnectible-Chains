@@ -5,7 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
-public class Helper {
+public class MathHelper {
 
     public static ResourceLocation identifier(String name) {
         return new ResourceLocation(CommonClass.MODID, name);
@@ -19,8 +19,8 @@ public class Helper {
         return (a * (x * x) + b * x);
     }
 
-    public static double drip2(double x, double d, double h) {
-        double a = CommonClass.runtimeConfig.getChainHangAmount();
+    public static double drip2(double x, double d, double h, double slack) {
+        double a = slack;
         a = a + (d * 0.3);
         double p1 = a * asinh((h / (2D * a)) * (1D / Math.sinh(d / (2D * a))));
         double p2 = -a * Math.cosh((2D * p1 - d) / (2D * a));
@@ -31,8 +31,8 @@ public class Helper {
         return Math.log(x + Math.sqrt(x * x + 1.0));
     }
 
-    public static double drip2prime(double x, double d, double h) {
-        double a = CommonClass.runtimeConfig.getChainHangAmount();
+    public static double drip2prime(double x, double d, double h, double slack) {
+        double a = slack;
         double p1 = a * asinh((h / (2D * a)) * (1D / Math.sinh(d / (2D * a))));
         return Math.sinh((2 * x + 2 * p1 - d) / (2 * a));
     }

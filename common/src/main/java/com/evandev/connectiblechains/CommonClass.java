@@ -3,6 +3,7 @@ package com.evandev.connectiblechains;
 import com.evandev.connectiblechains.config.ModConfig;
 import com.evandev.connectiblechains.entity.ModEntityTypes;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
+import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
 import com.evandev.connectiblechains.platform.Services;
 import com.mojang.logging.LogUtils;
@@ -35,7 +36,7 @@ public class CommonClass {
 
         Services.NETWORK.registerClientReceiver(
                 ChainAttachS2CPacket.class,
-                new ResourceLocation(MODID, "s2c_chain_attach_packet_id"),
+                ChainAttachS2CPacket.TYPE,
                 ChainAttachS2CPacket::new
         );
 
@@ -43,6 +44,12 @@ public class CommonClass {
                 ConfigSyncPayload.class,
                 new ResourceLocation(MODID, "config_sync"),
                 ConfigSyncPayload::new
+        );
+
+        Services.NETWORK.registerClientReceiver(
+                ChainSlackSyncS2CPacket.class,
+                ChainSlackSyncS2CPacket.TYPE,
+                ChainSlackSyncS2CPacket::new
         );
     }
 }

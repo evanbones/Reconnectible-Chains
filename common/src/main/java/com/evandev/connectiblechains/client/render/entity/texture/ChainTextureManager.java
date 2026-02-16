@@ -5,7 +5,7 @@ import com.evandev.connectiblechains.client.ClientInitializer;
 import com.evandev.connectiblechains.client.render.entity.UVRect;
 import com.evandev.connectiblechains.client.render.entity.catenary.CatenaryModel;
 import com.evandev.connectiblechains.client.render.entity.catenary.CatenaryRenderer;
-import com.evandev.connectiblechains.util.Helper;
+import com.evandev.connectiblechains.util.MathHelper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -23,7 +23,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class ChainTextureManager extends SimpleJsonResourceReloadListener {
-    public static final ResourceLocation DEFAULT_CATENARY = Helper.identifier("cross");
+    public static final ResourceLocation DEFAULT_CATENARY = MathHelper.identifier("cross");
     public static final Pair<UVRect, UVRect> DEFAULT_UV = new Pair<>(UVRect.DEFAULT_SIDE_A, UVRect.DEFAULT_SIDE_B);
     private static final String MODEL_FILE_LOCATION = "models/entity/" + CommonClass.MODID;
     private static final Gson GSON = new GsonBuilder().create();

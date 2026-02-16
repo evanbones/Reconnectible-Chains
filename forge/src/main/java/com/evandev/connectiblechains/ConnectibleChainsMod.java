@@ -7,6 +7,7 @@ import com.evandev.connectiblechains.client.render.entity.ChainKnotEntityRendere
 import com.evandev.connectiblechains.entity.ModEntityTypes;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.platform.ForgeRegistryHelper;
+import com.evandev.connectiblechains.util.ChainRaycastHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraftforge.api.distmarker.Dist;
@@ -40,6 +41,8 @@ public class ConnectibleChainsMod {
         modBus.addListener(this::setup);
         MinecraftForge.EVENT_BUS.addListener(this::onRightClickBlock);
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerJoin);
+        MinecraftForge.EVENT_BUS.addListener(this::onRightClickItem);
+        MinecraftForge.EVENT_BUS.addListener(this::onRightClickEmpty);
     }
 
     private void setup(final FMLCommonSetupEvent event) {
@@ -56,6 +59,20 @@ public class ConnectibleChainsMod {
     private void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             CommonClass.fileConfig.syncToClient(player);
+        }
+    }
+
+    private void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        if (ChainRaycastHelper.tryAdjustSlack(event.getEntity(), event.getHand())) {
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
+        }
+    }
+
+    private void onRightClickEmpty(PlayerInteractEvent.RightClickEmpty event) {
+        if (ChainRaycastHelper.tryAdjustSlack(event.getEntity(), event.getHand())) {
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
         }
     }
 

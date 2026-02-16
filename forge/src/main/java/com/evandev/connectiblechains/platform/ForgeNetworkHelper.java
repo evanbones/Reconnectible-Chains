@@ -2,6 +2,7 @@ package com.evandev.connectiblechains.platform;
 
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
+import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
 import com.evandev.connectiblechains.platform.services.INetworkHelper;
 import net.minecraft.network.FriendlyByteBuf;
@@ -35,6 +36,7 @@ public class ForgeNetworkHelper implements INetworkHelper {
                 (msg, buf) -> {
                     if (msg instanceof ChainAttachS2CPacket p) p.write(buf);
                     if (msg instanceof ConfigSyncPayload p) p.write(buf);
+                    if (msg instanceof ChainSlackSyncS2CPacket p) p.write(buf);
                 },
                 decoder,
                 (msg, ctx) -> {
@@ -65,6 +67,10 @@ public class ForgeNetworkHelper implements INetworkHelper {
                 }
             } else if (msg instanceof ConfigSyncPayload p) {
                 ConfigSyncPayload.handle(p);
+            } else if (msg instanceof ChainSlackSyncS2CPacket p) {
+                if (mc.player != null) {
+                    ChainSlackSyncS2CPacket.handle(p, mc.player);
+                }
             }
         }
     }

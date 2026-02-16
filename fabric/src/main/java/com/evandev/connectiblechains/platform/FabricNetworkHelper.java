@@ -1,6 +1,7 @@
 package com.evandev.connectiblechains.platform;
 
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
+import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
 import com.evandev.connectiblechains.platform.services.INetworkHelper;
 import net.fabricmc.api.EnvType;
@@ -38,6 +39,9 @@ public class FabricNetworkHelper implements INetworkHelper {
         } else if (packet instanceof ConfigSyncPayload p) {
             p.write(buf);
             packetId = ConfigSyncPayload.TYPE;
+        } else if (packet instanceof ChainSlackSyncS2CPacket p) {
+            p.write(buf);
+            packetId = ChainSlackSyncS2CPacket.TYPE;
         }
 
         if (packetId != null) {
@@ -56,6 +60,9 @@ public class FabricNetworkHelper implements INetworkHelper {
         } else if (packet instanceof ConfigSyncPayload p) {
             p.write(buf);
             packetId = ConfigSyncPayload.TYPE;
+        } else if (packet instanceof ChainSlackSyncS2CPacket p) {
+            p.write(buf);
+            packetId = ChainSlackSyncS2CPacket.TYPE;
         }
 
         if (packetId != null && server != null) {
@@ -77,6 +84,10 @@ public class FabricNetworkHelper implements INetworkHelper {
                         }
                     } else if (packet instanceof ConfigSyncPayload p) {
                         ConfigSyncPayload.handle(p);
+                    } else if (packet instanceof ChainSlackSyncS2CPacket p) {
+                        if (client.player != null) {
+                            ChainSlackSyncS2CPacket.handle(p, client.player);
+                        }
                     }
                 });
             });

@@ -12,6 +12,7 @@ public class ChainKnotEntityRenderState {
     public static class ChainData {
         public boolean useBaked;
         public Item sourceItem;
+        public float slack;
         public Vec3 offset = Vec3.ZERO;
         public Vec3 startPos = Vec3.ZERO;
         public Vec3 endPos = Vec3.ZERO;
