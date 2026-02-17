@@ -12,7 +12,6 @@ public class MixinMinecraft {
 
     @Inject(at = @At("TAIL"), method = "<init>")
     private void init(CallbackInfo info) {
-
         CommonClass.LOGGER.info("Loaded Connectible Chains!");
     }
 }

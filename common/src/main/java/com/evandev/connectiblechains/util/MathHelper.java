@@ -19,20 +19,21 @@ public class MathHelper {
         return (a * (x * x) + b * x);
     }
 
+    private static double asinh(double x) {
+        return Math.log(x + Math.sqrt(x * x + 1.0));
+    }
+
     public static double drip2(double x, double d, double h, double slack) {
-        double a = slack;
-        a = a + (d * 0.3);
+        double a = slack * Math.max(1.5, d / 2.5);
+
         double p1 = a * asinh((h / (2D * a)) * (1D / Math.sinh(d / (2D * a))));
         double p2 = -a * Math.cosh((2D * p1 - d) / (2D * a));
         return p2 + a * Math.cosh((((2D * x) + (2D * p1)) - d) / (2D * a));
     }
 
-    private static double asinh(double x) {
-        return Math.log(x + Math.sqrt(x * x + 1.0));
-    }
-
     public static double drip2prime(double x, double d, double h, double slack) {
-        double a = slack;
+        double a = slack * Math.max(1.5, d / 2.5);
+
         double p1 = a * asinh((h / (2D * a)) * (1D / Math.sinh(d / (2D * a))));
         return Math.sinh((2 * x + 2 * p1 - d) / (2 * a));
     }

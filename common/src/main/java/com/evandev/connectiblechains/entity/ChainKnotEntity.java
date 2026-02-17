@@ -5,6 +5,7 @@ import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
+import com.evandev.connectiblechains.util.ChainTracker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -97,6 +98,9 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
             this.dropItem(null);
         }
         super.tick();
+
+        ChainTracker.register(this.level(), this);
+
         if (this.level() instanceof ServerLevel serverWorld) {
             Chainable.tickChain(serverWorld, this);
         }
@@ -107,6 +111,9 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         if (!this.level().isClientSide) {
             this.detachAllChains();
         }
+
+        ChainTracker.unregister(this.level(), this);
+
         super.remove(reason);
     }
 

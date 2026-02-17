@@ -35,14 +35,12 @@ public class ForgeNetworkHelper implements INetworkHelper {
         CHANNEL.registerMessage(packetId++, type,
                 (msg, buf) -> {
                     if (msg instanceof ChainAttachS2CPacket p) p.write(buf);
-                    if (msg instanceof ConfigSyncPayload p) p.write(buf);
-                    if (msg instanceof ChainSlackSyncS2CPacket p) p.write(buf);
+                    else if (msg instanceof ConfigSyncPayload p) p.write(buf);
+                    else if (msg instanceof ChainSlackSyncS2CPacket p) p.write(buf);
                 },
                 decoder,
                 (msg, ctx) -> {
-                    ctx.get().enqueueWork(() -> {
-                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPacketHandler.handlePacket(msg));
-                    });
+                    ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPacketHandler.handlePacket(msg)));
                     ctx.get().setPacketHandled(true);
                 }
         );
@@ -62,15 +60,11 @@ public class ForgeNetworkHelper implements INetworkHelper {
         public static void handlePacket(Object msg) {
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
             if (msg instanceof ChainAttachS2CPacket p) {
-                if (mc.player != null) {
-                    ChainAttachS2CPacket.handle(p, mc.player);
-                }
+                if (mc.player != null) ChainAttachS2CPacket.handle(p, mc.player);
             } else if (msg instanceof ConfigSyncPayload p) {
                 ConfigSyncPayload.handle(p);
             } else if (msg instanceof ChainSlackSyncS2CPacket p) {
-                if (mc.player != null) {
-                    ChainSlackSyncS2CPacket.handle(p, mc.player);
-                }
+                if (mc.player != null) ChainSlackSyncS2CPacket.handle(p, mc.player);
             }
         }
     }

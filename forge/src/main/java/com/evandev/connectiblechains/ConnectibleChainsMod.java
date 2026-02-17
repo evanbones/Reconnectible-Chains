@@ -6,7 +6,9 @@ import com.evandev.connectiblechains.client.render.entity.ChainCollisionEntityRe
 import com.evandev.connectiblechains.client.render.entity.ChainKnotEntityRenderer;
 import com.evandev.connectiblechains.entity.ModEntityTypes;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
+import com.evandev.connectiblechains.networking.packet.ChainBreakC2SPacket;
 import com.evandev.connectiblechains.platform.ForgeRegistryHelper;
+import com.evandev.connectiblechains.platform.ForgeNetworkHelper;
 import com.evandev.connectiblechains.util.ChainRaycastHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
@@ -124,6 +126,13 @@ public class ConnectibleChainsMod {
             if (ClientInitializer.getInstance() != null) {
                 ClientInitializer.getInstance().getChainKnotEntityRenderer()
                         .ifPresent(r -> r.getChainRenderer().purge());
+            }
+        }
+
+        @SubscribeEvent
+        public static void onLeftClickEmpty(PlayerInteractEvent.LeftClickEmpty event) {
+            if (ChainRaycastHelper.tryBreakChain(event.getEntity())) {
+                ForgeNetworkHelper.CHANNEL.sendToServer(new ChainBreakC2SPacket());
             }
         }
     }

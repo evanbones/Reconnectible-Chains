@@ -14,6 +14,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -182,25 +183,24 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
         if (level().isClientSide) return false;
 
         if (source.getEntity() instanceof Player player) {
-            boolean isCreative = player.isCreative();
-            boolean hasShears = player.getMainHandItem().is(Items.SHEARS);
-            if (!isCreative && !hasShears) return false;
+            if (!player.getMainHandItem().is(Items.SHEARS)) return false;
+
+            if (getLink() == null) {
+                this.discard();
+                return false;
+            }
+
+            if (chainedEntity instanceof Chainable chainable) {
+                CommonClass.LOGGER.debug("Dropping chain ({}) due to left-click with shears.", getLink());
+                chainable.detachChain(getLink());
+
+                if (!player.isCreative()) {
+                    player.getMainHandItem().hurtAndBreak(1, player, (p) -> p.broadcastBreakEvent(EquipmentSlot.MAINHAND));
+                }
+                return true;
+            }
         }
-
-        if (getLink() == null) {
-            this.discard();
-            return false;
-        }
-
-        InteractionResult result = onDamageFrom(source, Chainable.getSourceBlockSoundGroup(getLinkSourceItem()).getHitSound());
-
-        if (!result.consumesAction()) return false;
-
-        if (chainedEntity instanceof Chainable chainable) {
-            CommonClass.LOGGER.debug("Dropping chain ({}) due to receiving damage from source: {}", getLink(), source);
-            chainable.detachChain(getLink());
-        }
-        return true;
+        return false;
     }
 
     @Override

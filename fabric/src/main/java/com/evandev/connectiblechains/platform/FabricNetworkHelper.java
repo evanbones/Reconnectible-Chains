@@ -1,5 +1,6 @@
 package com.evandev.connectiblechains.platform;
 
+import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
@@ -35,13 +36,13 @@ public class FabricNetworkHelper implements INetworkHelper {
 
         if (packet instanceof ChainAttachS2CPacket p) {
             p.write(buf);
-            packetId = ChainAttachS2CPacket.TYPE;
+            packetId = new ResourceLocation(CommonClass.MODID, "s2c_chain_attach_packet_id");
         } else if (packet instanceof ConfigSyncPayload p) {
             p.write(buf);
-            packetId = ConfigSyncPayload.TYPE;
+            packetId = new ResourceLocation(CommonClass.MODID, "config_sync");
         } else if (packet instanceof ChainSlackSyncS2CPacket p) {
             p.write(buf);
-            packetId = ChainSlackSyncS2CPacket.TYPE;
+            packetId = new ResourceLocation(CommonClass.MODID, "s2c_chain_slack_sync");
         }
 
         if (packetId != null) {
@@ -56,13 +57,13 @@ public class FabricNetworkHelper implements INetworkHelper {
 
         if (packet instanceof ChainAttachS2CPacket p) {
             p.write(buf);
-            packetId = ChainAttachS2CPacket.TYPE;
+            packetId = new ResourceLocation(CommonClass.MODID, "s2c_chain_attach_packet_id");
         } else if (packet instanceof ConfigSyncPayload p) {
             p.write(buf);
-            packetId = ConfigSyncPayload.TYPE;
+            packetId = new ResourceLocation(CommonClass.MODID, "config_sync");
         } else if (packet instanceof ChainSlackSyncS2CPacket p) {
             p.write(buf);
-            packetId = ChainSlackSyncS2CPacket.TYPE;
+            packetId = new ResourceLocation(CommonClass.MODID, "s2c_chain_slack_sync");
         }
 
         if (packetId != null && server != null) {
