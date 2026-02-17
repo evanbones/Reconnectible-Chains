@@ -13,7 +13,6 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Optional;
@@ -44,12 +43,20 @@ public class ChainRaycastHelper {
         if (chainedEntity instanceof Chainable chainable) {
             float currentSlack = link.getSlack();
             float currentSag = 1.0f / currentSlack;
-            float sagStep = 0.1f;
+            float oldSag = currentSag;
+
+            float sagStep = 0.05f;
+            float minSag = 0.05f;
+            float maxSag = 1.40f;
 
             if (player.isShiftKeyDown()) {
-                currentSag = Math.max(0.02f, currentSag - sagStep);
+                currentSag = Math.max(minSag, currentSag - sagStep);
             } else {
-                currentSag = Math.min(2.0f, currentSag + sagStep);
+                currentSag = Math.min(maxSag, currentSag + sagStep);
+            }
+
+            if (Math.abs(currentSag - oldSag) < 0.001f) {
+                return true;
             }
 
             link.customSlack = 1.0f / currentSag;
@@ -78,12 +85,15 @@ public class ChainRaycastHelper {
         Vec3 rayOrigin = player.getEyePosition(1.0f);
         Vec3 rayDir = player.getViewVector(1.0f);
 
-        AABB searchBox = new AABB(rayOrigin, rayOrigin).inflate(reach);
         double closestDistance = reach;
         ChainHitResult bestHit = null;
 
-        for (Entity entity : player.level().getEntitiesOfClass(Entity.class, searchBox)) {
-            if (!(entity instanceof Chainable chainable)) continue;
+        for (Chainable chainable : ChainTracker.getChains(player.level())) {
+            Entity entity = (Entity) chainable;
+
+            if (entity.distanceTo(player) > Chainable.getMaxChainLength() + reach) {
+                continue;
+            }
 
             for (Chainable.ChainData chainData : chainable.getChainDataSet()) {
                 Entity chainHolder = chainable.getChainHolder(chainData);
@@ -98,8 +108,14 @@ public class ChainRaycastHelper {
                 }
 
                 double distance = srcPos.distanceTo(dstPos);
-                int segments = Math.max(8, (int) (distance * 4));
+                double maxDroop = Math.abs(MathHelper.drip2(distance / 2.0, distance, dstPos.y() - srcPos.y(), chainData.getSlack()));
 
+                double distToStraightLine = distanceRaySegment(rayOrigin, rayDir, srcPos, dstPos, reach);
+                if (distToStraightLine > maxDroop + 0.5) {
+                    continue;
+                }
+
+                int segments = Math.max(8, Math.min(64, (int) (distance * 1.5)));
                 Vec3 lastPoint = srcPos.add(0, -0.125, 0);
 
                 for (int i = 1; i <= segments; i++) {
@@ -123,6 +139,34 @@ public class ChainRaycastHelper {
             }
         }
         return Optional.ofNullable(bestHit);
+    }
+
+    /**
+     * Attempts to break a looked-at chain.
+     */
+    public static boolean tryBreakChain(Player player) {
+        ItemStack stack = player.getMainHandItem();
+        if (!stack.is(Items.SHEARS)) return false;
+
+        double reachDistance = player.isCreative() ? 5.0 : 4.5;
+
+        Optional<ChainHitResult> hitOpt = raycastChains(player, reachDistance);
+        if (hitOpt.isEmpty()) return false;
+
+        if (player.level().isClientSide) return true;
+
+        ChainHitResult hit = hitOpt.get();
+        Chainable.ChainData link = hit.chainData();
+        Entity chainedEntity = hit.chainedEntity();
+
+        if (chainedEntity instanceof Chainable chainable) {
+            chainable.detachChain(link);
+
+            if (!player.isCreative()) {
+                stack.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
+            }
+        }
+        return true;
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.evandev.connectiblechains.platform;
 
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
+import com.evandev.connectiblechains.networking.packet.ChainBreakC2SPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
 import com.evandev.connectiblechains.platform.services.INetworkHelper;
@@ -36,6 +37,12 @@ public class NeoForgeNetworkHelper implements INetworkHelper {
                 ChainSlackSyncS2CPacket.TYPE,
                 ChainSlackSyncS2CPacket.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ChainSlackSyncS2CPacket.handle(payload, context.player()))
+        );
+
+        registrar.playToServer(
+                ChainBreakC2SPacket.TYPE,
+                ChainBreakC2SPacket.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ChainBreakC2SPacket.handle(payload, context.player()))
         );
     }
 

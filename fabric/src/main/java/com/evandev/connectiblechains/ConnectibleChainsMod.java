@@ -1,12 +1,17 @@
 package com.evandev.connectiblechains;
 
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
+import com.evandev.connectiblechains.networking.packet.ChainBreakC2SPacket;
 import com.evandev.connectiblechains.platform.FabricNetworkHelper;
 import com.evandev.connectiblechains.util.ChainRaycastHelper;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 
 public class ConnectibleChainsMod implements ModInitializer {
@@ -15,6 +20,14 @@ public class ConnectibleChainsMod implements ModInitializer {
     public void onInitialize() {
         FabricNetworkHelper.init();
         CommonClass.init();
+
+        PayloadTypeRegistry.playC2S().register(ChainBreakC2SPacket.TYPE, ChainBreakC2SPacket.STREAM_CODEC);
+
+        ServerPlayNetworking.registerGlobalReceiver(ChainBreakC2SPacket.TYPE, (payload, context) -> {
+            context.server().execute(() -> {
+                ChainBreakC2SPacket.handle(payload, context.player());
+            });
+        });
 
         UseBlockCallback.EVENT.register(ChainItemCallbacks::chainUseEvent);
 

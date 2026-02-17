@@ -1,8 +1,10 @@
-### Added
+### Changed
 
-- Slack can now be adjusted on a per-chain basis by right-clicking or shift right-clicking the chain length with Shears.
+- Default chain slack now dynamically changes with chain length.
+- Improved hit detection for chain breaking.
 
 ### Fixed
 
-- Fixed odd lighting on certain Chain types.
-- Fixed modded Chains sometimes not resetting their models properly.
+- Fixed Shears taking durability when attempting to adjust slack beyond maximum/minimum values.
+- Fixed chain links being unbreakable with Shears when disabling collision.
+- Increased minimum slack.
