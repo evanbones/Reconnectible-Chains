@@ -23,11 +23,23 @@ public record ChainSlackSyncS2CPacket(int entityId, int holderId, float slack) i
     public static void handle(ChainSlackSyncS2CPacket packet, Player player) {
         if (player.level().getEntity(packet.entityId()) instanceof Chainable chainable) {
             Entity holder = player.level().getEntity(packet.holderId());
+            Chainable.ChainData data = null;
+
             if (holder != null) {
-                Chainable.ChainData data = chainable.getChainData(holder);
-                if (data != null) {
-                    data.customSlack = packet.slack();
+                data = chainable.getChainData(holder);
+            }
+
+            if (data == null) {
+                for (Chainable.ChainData chainData : chainable.getChainDataSet()) {
+                    if (chainData.unresolvedChainHolderId == packet.holderId()) {
+                        data = chainData;
+                        break;
+                    }
                 }
+            }
+
+            if (data != null) {
+                data.customSlack = packet.slack();
             }
         }
     }

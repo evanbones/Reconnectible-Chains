@@ -3,6 +3,7 @@ package com.evandev.connectiblechains.entity;
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
+import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.evandev.connectiblechains.util.ChainTracker;
@@ -302,7 +303,11 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     public void startSeenByPlayer(@NotNull ServerPlayer player) {
         super.startSeenByPlayer(player);
         for (ChainData chainData : getChainDataSet()) {
-            Services.NETWORK.sendToClient(player, new ChainAttachS2CPacket(this, null, getChainHolder(chainData), chainData.sourceItem));
+            Entity holder = getChainHolder(chainData);
+            Services.NETWORK.sendToClient(player, new ChainAttachS2CPacket(this, null, holder, chainData.sourceItem));
+            if (holder != null && chainData.customSlack >= 0) {
+                Services.NETWORK.sendToClient(player, new ChainSlackSyncS2CPacket(this.getId(), holder.getId(), chainData.customSlack));
+            }
         }
     }
 

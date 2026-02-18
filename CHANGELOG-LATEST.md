@@ -1,10 +1,8 @@
 ### Changed
 
-- Default chain slack now dynamically changes with chain length.
-- Improved hit detection for chain breaking.
+- Chains can now be connected to Supplementaries Gold Bars.
 
 ### Fixed
 
-- Fixed Shears taking durability when attempting to adjust slack beyond maximum/minimum values.
-- Fixed chain links being unbreakable with Shears when disabling collision.
-- Increased minimum slack.
+- Fixed chain rendering resetting when reloading world.
+- Fixed chain interactions not working properly on long chains.

@@ -108,7 +108,7 @@ public class ChainRaycastHelper {
                 }
 
                 double distance = srcPos.distanceTo(dstPos);
-                double maxDroop = Math.abs(MathHelper.drip2(distance / 2.0, distance, dstPos.y() - srcPos.y(), chainData.getSlack()));
+                double maxDroop = Math.abs(MathHelper.drip2(distance / 2.0, distance, dstPos.y() - srcPos.y(), chainData.getSlack()) - (dstPos.y() - srcPos.y()) / 2.0);
 
                 double distToStraightLine = distanceRaySegment(rayOrigin, rayDir, srcPos, dstPos, reach);
                 if (distToStraightLine > maxDroop + 0.5) {
