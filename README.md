@@ -24,6 +24,7 @@ see [this mod's issue tracker](https://github.com/evanbones/Reconnectible-Chains
 * You can now punch knots directly to break them.
 * Knots break instantly instead of waiting a couple seconds.
 * Using Shears to break knots now reduces its durability.
+* Plenty of bug fixes, with more being added frequently.
 * Safer knot discarding, should fix issues with knots across chunk borders.
 * Additional safety checks for collision entities on dedicated servers.
 
