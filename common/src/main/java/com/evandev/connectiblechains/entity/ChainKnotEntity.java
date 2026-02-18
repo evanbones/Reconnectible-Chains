@@ -250,7 +250,8 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         double radius = width / 2.0;
 
         BlockState state = this.level().getBlockState(pos);
-        VoxelShape shape = state.getShape(this.level(), pos);
+        BlockState defaultState = state.getBlock().defaultBlockState();
+        VoxelShape shape = defaultState.getShape(this.level(), pos);
         if (!shape.isEmpty()) {
             AABB bounds = shape.bounds();
             double maxDim = Math.max(bounds.getXsize(), bounds.getZsize());

@@ -73,8 +73,10 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
         matrices.translate(0, 0.5, 0);
 
         float scaleXZ = 5 / 6f;
+
         BlockState blockState = entity.level().getBlockState(entity.blockPosition());
-        VoxelShape shape = blockState.getShape(entity.level(), entity.blockPosition());
+        BlockState defaultState = blockState.getBlock().defaultBlockState();
+        VoxelShape shape = defaultState.getShape(entity.level(), entity.blockPosition());
         if (!shape.isEmpty()) {
             AABB bounds = shape.bounds();
             double maxDim = Math.max(bounds.getXsize(), bounds.getZsize());
