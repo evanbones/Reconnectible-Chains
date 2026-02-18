@@ -24,7 +24,10 @@ import net.minecraft.world.entity.decoration.HangingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
@@ -68,7 +71,17 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
     public void render(ChainKnotEntity entity, ChainKnotEntityRenderState state, PoseStack matrices, MultiBufferSource vertexConsumers, int light, float tickDelta) {
         matrices.pushPose();
         matrices.translate(0, 0.5, 0);
-        matrices.scale(5 / 6f, 1, 5 / 6f);
+
+        float scaleXZ = 5 / 6f;
+        BlockState blockState = entity.level().getBlockState(entity.blockPosition());
+        VoxelShape shape = blockState.getShape(entity.level(), entity.blockPosition());
+        if (!shape.isEmpty()) {
+            AABB bounds = shape.bounds();
+            double maxDim = Math.max(bounds.getXsize(), bounds.getZsize());
+            scaleXZ = (float) (maxDim + 0.0625) / 0.375f;
+        }
+        matrices.scale(scaleXZ, 1, scaleXZ);
+
         VertexConsumer vertexConsumer = vertexConsumers.getBuffer(this.model.renderType(getKnotTexture(state.sourceItem)));
         this.model.renderToBuffer(matrices, vertexConsumer, light, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
         matrices.popPose();

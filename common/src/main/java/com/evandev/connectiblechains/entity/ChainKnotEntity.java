@@ -29,9 +29,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -246,6 +248,14 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         double width = this.getType().getWidth();
         double height = this.getType().getHeight();
         double radius = width / 2.0;
+
+        BlockState state = this.level().getBlockState(pos);
+        VoxelShape shape = state.getShape(this.level(), pos);
+        if (!shape.isEmpty()) {
+            AABB bounds = shape.bounds();
+            double maxDim = Math.max(bounds.getXsize(), bounds.getZsize());
+            radius = Math.max(radius, (maxDim + 0.0625) / 2.0);
+        }
 
         return new AABB(
                 x - radius, y, z - radius,
