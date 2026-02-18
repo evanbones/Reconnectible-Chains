@@ -3,6 +3,7 @@ package com.evandev.connectiblechains.entity;
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
+import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.mojang.datafixers.util.Either;
@@ -160,6 +161,9 @@ public interface Chainable {
 
         if (sendPacket && entity.level() instanceof ServerLevel serverLevel) {
             Services.NETWORK.sendToAllClients(serverLevel.getServer(), new ChainAttachS2CPacket(entity, previousHolder, chainData.chainHolder, chainData.sourceItem));
+            if (chainData.customSlack >= 0) {
+                Services.NETWORK.sendToAllClients(serverLevel.getServer(), new ChainSlackSyncS2CPacket(entity.getId(), chainData.chainHolder.getId(), chainData.customSlack));
+            }
             if (chainData.chainHolder instanceof Chainable) {
                 ChainCollisionEntity.createCollision(entity, chainData);
             }
@@ -367,7 +371,7 @@ public interface Chainable {
         public final ArrayList<Integer> collisionStorage = new ArrayList<>(16);
         @NotNull
         public final Item sourceItem;
-        final int unresolvedChainHolderId;
+        public final int unresolvedChainHolderId;
         @Nullable
         private final Entity chainHolder;
         @Nullable
