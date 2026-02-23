@@ -1,6 +1,7 @@
 package com.evandev.connectiblechains;
 
 import com.evandev.connectiblechains.client.ClientConfigSetup;
+import com.evandev.connectiblechains.command.ConnectChainCommand;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.platform.NeoForgeNetworkHelper;
 import com.evandev.connectiblechains.platform.NeoForgeRegistryHelper;
@@ -13,6 +14,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
@@ -32,6 +34,7 @@ public class ConnectibleChainsMod {
         NeoForge.EVENT_BUS.addListener(this::onRightClickBlock);
         NeoForge.EVENT_BUS.addListener(this::onPlayerJoin);
         NeoForge.EVENT_BUS.addListener(this::onRightClickItem);
+        NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
     }
 
     private void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
@@ -53,6 +56,10 @@ public class ConnectibleChainsMod {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);
         }
+    }
+
+    private void onRegisterCommands(RegisterCommandsEvent event) {
+        ConnectChainCommand.register(event.getDispatcher());
     }
 
 }

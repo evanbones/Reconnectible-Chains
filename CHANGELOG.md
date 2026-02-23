@@ -5,11 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.3h] - 2026-02-18
+## [1.2.0] - 2026-02-22
+
+### Added
+
+- Added `/connectchain` command to connect a chain between two blocks.
+- Abyssal Decor and Fang's Textiles and Trinkets now have their chains detected automatically.
+- Improved detection for modded chain textures.
 
 ### Fixed
 
-- Chain knot sizes are no longer affected by blockstates, like connected fences/walls.
+- Chains not rendering beyond a specific distance.
+- Fixed Copper Age Backport compatibility.
 
 ## [1.1.3] - 2026-02-18
 

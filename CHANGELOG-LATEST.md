@@ -1,3 +1,10 @@
+### Added
+
+- Added `/connectchain` command to connect a chain between two blocks.
+- Abyssal Decor and Fang's Textiles and Trinkets now have their chains detected automatically.
+
 ### Fixed
 
-- Chain knot sizes are no longer affected by blockstates, like connected fences/walls.
+- Chains not rendering beyond a specific distance.
+- Improved detection for modded chain textures.
+- Fixed Copper Age Backport compatibility.
