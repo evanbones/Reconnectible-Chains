@@ -4,11 +4,12 @@ import com.evandev.connectiblechains.client.ClientConfigSetup;
 import com.evandev.connectiblechains.client.ClientInitializer;
 import com.evandev.connectiblechains.client.render.entity.ChainCollisionEntityRenderer;
 import com.evandev.connectiblechains.client.render.entity.ChainKnotEntityRenderer;
+import com.evandev.connectiblechains.command.ConnectChainCommand;
 import com.evandev.connectiblechains.entity.ModEntityTypes;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.ChainBreakC2SPacket;
-import com.evandev.connectiblechains.platform.ForgeRegistryHelper;
 import com.evandev.connectiblechains.platform.ForgeNetworkHelper;
+import com.evandev.connectiblechains.platform.ForgeRegistryHelper;
 import com.evandev.connectiblechains.util.ChainRaycastHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
@@ -16,6 +17,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
@@ -45,6 +47,7 @@ public class ConnectibleChainsMod {
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerJoin);
         MinecraftForge.EVENT_BUS.addListener(this::onRightClickItem);
         MinecraftForge.EVENT_BUS.addListener(this::onRightClickEmpty);
+        MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
     }
 
     private void setup(final FMLCommonSetupEvent event) {
@@ -76,6 +79,10 @@ public class ConnectibleChainsMod {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);
         }
+    }
+
+    private void onRegisterCommands(RegisterCommandsEvent event) {
+        ConnectChainCommand.register(event.getDispatcher());
     }
 
     @Mod.EventBusSubscriber(modid = CommonClass.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)

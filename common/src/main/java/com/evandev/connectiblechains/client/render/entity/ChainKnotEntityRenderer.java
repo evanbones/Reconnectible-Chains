@@ -187,13 +187,11 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
     }
 
     private ResourceLocation getKnotTexture(Item item) {
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
-        return getTextureManager().getKnotTexture(id);
+        return getTextureManager().getKnotTexture(item);
     }
 
     private ResourceLocation getChainTexture(Item item) {
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
-        return getTextureManager().getChainTexture(id);
+        return getTextureManager().getChainTexture(item);
     }
 
     private CatenaryRenderer getCatenaryRenderer(Item item) {

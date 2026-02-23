@@ -1,9 +1,11 @@
 package com.evandev.connectiblechains;
 
+import com.evandev.connectiblechains.command.ConnectChainCommand;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.ChainBreakC2SPacket;
 import com.evandev.connectiblechains.util.ChainRaycastHelper;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -36,5 +38,9 @@ public class ConnectibleChainsMod implements ModInitializer {
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
                 CommonClass.fileConfig.syncToClient(handler.getPlayer()));
+
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+            ConnectChainCommand.register(dispatcher);
+        });
     }
 }

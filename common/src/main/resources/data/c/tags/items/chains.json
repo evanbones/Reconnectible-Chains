@@ -9,6 +9,18 @@
     {
       "id": "mcwlights:golden_chain",
       "required": false
+    },
+    {
+      "id": "abyssal_decor:seabrass_chain",
+      "required": false
+    },
+    {
+      "id": "abyssal_decor:deepbronze_chain",
+      "required": false
+    },
+    {
+      "id": "textiles_and_trinkets:ferrymans_chain",
+      "required": false
     }
   ]
 }

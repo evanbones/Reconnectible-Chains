@@ -232,6 +232,13 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
+    public boolean shouldRenderAtSqrDistance(double distance) {
+        double maxDist = CommonClass.runtimeConfig.getMaxChainRange();
+        double renderDist = Math.max(maxDist * 2.0, 64.0);
+        return distance < (renderDist * renderDist);
+    }
+
+    @Override
     public @NotNull AABB getBoundingBoxForCulling() {
         AABB result = super.getBoundingBoxForCulling();
         for (ChainData chainData : new HashSet<>(this.getChainDataSet())) {
