@@ -2,6 +2,7 @@ package com.evandev.connectiblechains.platform;
 
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
+import com.evandev.connectiblechains.networking.packet.ChainBreakC2SPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
 import com.evandev.connectiblechains.platform.services.INetworkHelper;
@@ -28,6 +29,19 @@ public class ForgeNetworkHelper implements INetworkHelper {
     private int packetId = 0;
 
     public ForgeNetworkHelper() {
+        CHANNEL.registerMessage(packetId++, ChainBreakC2SPacket.class,
+                ChainBreakC2SPacket::write,
+                ChainBreakC2SPacket::new,
+                (msg, ctx) -> {
+                    ctx.get().enqueueWork(() -> {
+                        ServerPlayer player = ctx.get().getSender();
+                        if (player != null) {
+                            ChainBreakC2SPacket.handle(msg, player);
+                        }
+                    });
+                    ctx.get().setPacketHandled(true);
+                }
+        );
     }
 
     @Override
