@@ -15,7 +15,7 @@ public class ModConfig implements ConfigData {
     private float chainHangAmount = 8.0F;
     @ConfigEntry.BoundedDiscrete(max = 128)
     @ConfigEntry.Gui.Tooltip()
-    private int maxChainRange = 16;
+    private int maxChainRange = 32;
     @ConfigEntry.BoundedDiscrete(min = 1, max = 8)
     @ConfigEntry.Gui.Tooltip()
     private int quality = 4;

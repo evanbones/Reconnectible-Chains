@@ -69,24 +69,27 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
     }
 
     public void render(ChainKnotEntity entity, ChainKnotEntityRenderState state, PoseStack matrices, MultiBufferSource vertexConsumers, int light, float tickDelta) {
-        matrices.pushPose();
-        matrices.translate(0, 0.5, 0);
+        double distanceToCameraSqr = this.entityRenderDispatcher.distanceToSqr(entity);
 
-        float scaleXZ = 5 / 6f;
+        if (distanceToCameraSqr <= 4096.0D) {
+            matrices.pushPose();
+            matrices.translate(0, 0.5, 0);
 
-        BlockState blockState = entity.level().getBlockState(entity.blockPosition());
-        BlockState defaultState = blockState.getBlock().defaultBlockState();
-        VoxelShape shape = defaultState.getShape(entity.level(), entity.blockPosition());
-        if (!shape.isEmpty()) {
-            AABB bounds = shape.bounds();
-            double maxDim = Math.max(bounds.getXsize(), bounds.getZsize());
-            scaleXZ = (float) (maxDim + 0.0625) / 0.375f;
+            float scaleXZ = 5 / 6f;
+            BlockState blockState = entity.level().getBlockState(entity.blockPosition());
+            BlockState defaultState = blockState.getBlock().defaultBlockState();
+            VoxelShape shape = defaultState.getShape(entity.level(), entity.blockPosition());
+            if (!shape.isEmpty()) {
+                AABB bounds = shape.bounds();
+                double maxDim = Math.max(bounds.getXsize(), bounds.getZsize());
+                scaleXZ = (float) (maxDim + 0.0625) / 0.375f;
+            }
+            matrices.scale(scaleXZ, 1, scaleXZ);
+
+            VertexConsumer vertexConsumer = vertexConsumers.getBuffer(this.model.renderType(getKnotTexture(state.sourceItem)));
+            this.model.renderToBuffer(matrices, vertexConsumer, light, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
+            matrices.popPose();
         }
-        matrices.scale(scaleXZ, 1, scaleXZ);
-
-        VertexConsumer vertexConsumer = vertexConsumers.getBuffer(this.model.renderType(getKnotTexture(state.sourceItem)));
-        this.model.renderToBuffer(matrices, vertexConsumer, light, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
-        matrices.popPose();
 
         HashSet<ChainKnotEntityRenderState.ChainData> chainDataSet = state.chainDataSet;
         for (ChainKnotEntityRenderState.ChainData chainData : chainDataSet) {
