@@ -15,6 +15,10 @@
     {
       "id": "supplementaries:gold_bars",
       "required": false
+    },
+    {
+      "id": "#quark:posts",
+      "required": false
     }
   ]
 }

@@ -8,6 +8,7 @@ import com.evandev.connectiblechains.client.render.entity.state.ChainKnotEntityR
 import com.evandev.connectiblechains.client.render.entity.texture.ChainTextureManager;
 import com.evandev.connectiblechains.entity.ChainKnotEntity;
 import com.evandev.connectiblechains.entity.Chainable;
+import com.evandev.connectiblechains.util.ChainTracker;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -67,23 +68,27 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
     }
 
     public void render(ChainKnotEntity entity, ChainKnotEntityRenderState state, PoseStack matrices, MultiBufferSource vertexConsumers, int light, float tickDelta) {
-        matrices.pushPose();
-        matrices.translate(0, 0.7, 0);
+        double distanceToCameraSqr = this.entityRenderDispatcher.distanceToSqr(entity);
 
-        float scaleXZ = 5 / 6f;
-        BlockState blockState = entity.level().getBlockState(entity.getPos());
-        BlockState defaultState = blockState.getBlock().defaultBlockState();
-        VoxelShape shape = defaultState.getShape(entity.level(), entity.getPos());
-        if (!shape.isEmpty()) {
-            AABB bounds = shape.bounds();
-            double maxDim = Math.max(bounds.getXsize(), bounds.getZsize());
-            scaleXZ = (float) (maxDim + 0.0625) / 0.375f;
+        if (distanceToCameraSqr <= 4096.0D) {
+            matrices.pushPose();
+            matrices.translate(0, 0.7, 0);
+
+            float scaleXZ = 5 / 6f;
+            BlockState blockState = entity.level().getBlockState(entity.getPos());
+            BlockState defaultState = blockState.getBlock().defaultBlockState();
+            VoxelShape shape = defaultState.getShape(entity.level(), entity.getPos());
+            if (!shape.isEmpty()) {
+                AABB bounds = shape.bounds();
+                double maxDim = Math.max(bounds.getXsize(), bounds.getZsize());
+                scaleXZ = (float) (maxDim + 0.0625) / 0.375f;
+            }
+            matrices.scale(scaleXZ, 1, scaleXZ);
+
+            VertexConsumer vertexConsumer = vertexConsumers.getBuffer(this.model.renderType(getKnotTexture(state.sourceItem)));
+            this.model.renderToBuffer(matrices, vertexConsumer, light, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
+            matrices.popPose();
         }
-        matrices.scale(scaleXZ, 1, scaleXZ);
-
-        VertexConsumer vertexConsumer = vertexConsumers.getBuffer(this.model.renderType(getKnotTexture(state.sourceItem)));
-        this.model.renderToBuffer(matrices, vertexConsumer, light, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
-        matrices.popPose();
 
         HashSet<ChainKnotEntityRenderState.ChainData> chainDataSet = state.chainDataSet;
         for (ChainKnotEntityRenderState.ChainData chainData : chainDataSet) {
@@ -147,7 +152,9 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
     }
 
     public void updateRenderState(ChainKnotEntity entity, ChainKnotEntityRenderState state, float tickDelta) {
-        HashSet<ChainKnotEntityRenderState.ChainData> result = new HashSet<>(entity.getChainDataSet().size());
+        HashSet<ChainKnotEntityRenderState.ChainData> result = new HashSet<>();
+        Level level = entity.level();
+
         for (Chainable.ChainData chainData : new HashSet<>(entity.getChainDataSet())) {
             Entity chainHolder = entity.getChainHolder(chainData);
             if (chainHolder == null) continue;
@@ -163,7 +170,6 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
 
             BlockPos blockPosOfStart = BlockPos.containing(entity.getEyePosition(tickDelta));
             BlockPos blockPosOfEnd = BlockPos.containing(chainHolder.getEyePosition(tickDelta));
-            Level level = entity.level();
 
             ChainKnotEntityRenderState.ChainData renderChainData = new ChainKnotEntityRenderState.ChainData();
             renderChainData.offset = offset;
@@ -178,6 +184,38 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             renderChainData.slack = chainData.getSlack();
             result.add(renderChainData);
         }
+
+        for (Chainable other : ChainTracker.getChains(level)) {
+            if (other == entity) continue;
+            Chainable.ChainData incomingLink = other.getChainData(entity);
+            if (incomingLink != null) {
+                Entity otherEntity = (Entity) other;
+                Vec3 srcPos = other.getChainPos(tickDelta);
+                Vec3 dstPos = entity.getChainPos(tickDelta);
+
+                Vec3 otherPos = otherEntity.getPosition(tickDelta);
+                Vec3 entityPos = entity.getPosition(tickDelta);
+                double offsetY = (otherEntity instanceof ChainKnotEntity) ? 0.3 : (srcPos.y - otherPos.y);
+                Vec3 offset = new Vec3(otherPos.x - entityPos.x, (otherPos.y - entityPos.y) + offsetY, otherPos.z - entityPos.z);
+
+                BlockPos blockPosOfStart = BlockPos.containing(otherEntity.getEyePosition(tickDelta));
+                BlockPos blockPosOfEnd = BlockPos.containing(entity.getEyePosition(tickDelta));
+
+                ChainKnotEntityRenderState.ChainData renderChainData = new ChainKnotEntityRenderState.ChainData();
+                renderChainData.offset = offset;
+                renderChainData.startPos = srcPos;
+                renderChainData.endPos = dstPos;
+                renderChainData.chainedEntityBlockLight = level.getBrightness(LightLayer.BLOCK, blockPosOfStart);
+                renderChainData.chainHolderBlockLight = level.getBrightness(LightLayer.BLOCK, blockPosOfEnd);
+                renderChainData.chainedEntitySkyLight = level.getBrightness(LightLayer.SKY, blockPosOfStart);
+                renderChainData.chainHolderSkyLight = level.getBrightness(LightLayer.SKY, blockPosOfEnd);
+                renderChainData.sourceItem = incomingLink.sourceItem;
+                renderChainData.useBaked = otherEntity instanceof HangingEntity;
+                renderChainData.slack = incomingLink.getSlack();
+                result.add(renderChainData);
+            }
+        }
+
         state.chainDataSet = result;
         state.sourceItem = entity.getSourceItem();
     }

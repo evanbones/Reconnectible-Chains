@@ -7,6 +7,7 @@ import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.evandev.connectiblechains.util.ChainTracker;
+import com.evandev.connectiblechains.util.MathHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -233,9 +234,12 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
     @Override
     public boolean shouldRenderAtSqrDistance(double distance) {
-        double maxDist = CommonClass.runtimeConfig.getMaxChainRange();
-        double renderDist = Math.max(maxDist * 2.0, 64.0);
-        return distance < (renderDist * renderDist);
+        double d = this.getBoundingBoxForCulling().getSize();
+        if (Double.isNaN(d)) {
+            d = 1.0D;
+        }
+        d *= 64.0D * getViewScale();
+        return distance < d * d;
     }
 
     @Override
@@ -244,9 +248,17 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         for (ChainData chainData : new HashSet<>(this.getChainDataSet())) {
             Entity entity = this.getChainHolder(chainData);
             if (entity == null) continue;
+
             result = result.minmax(entity.getBoundingBox());
+
+            double distance = this.position().distanceTo(entity.position());
+            double dy = entity.getY() - this.getY();
+            double sag = Math.abs(MathHelper.drip2(distance / 2.0, distance, dy, chainData.getSlack()));
+
+            double minY = Math.min(this.getY(), entity.getY()) - sag - 1.0;
+            result = result.minmax(new AABB(this.getX(), minY, this.getZ(), this.getX(), minY, this.getZ()));
         }
-        return result;
+        return result.inflate(1.0);
     }
 
     @Override
