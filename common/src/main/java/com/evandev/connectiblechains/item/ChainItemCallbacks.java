@@ -42,26 +42,38 @@ public class ChainItemCallbacks {
         BlockState blockState = level.getBlockState(blockPos);
 
         if (blockState.is(ModTagRegistry.CHAIN_CONNECTIBLE)) {
-            if (hasAnyLeadsToConnect(level, blockPos, player)) {
+            ChainKnotEntity existingKnot = ChainKnotEntity.getOrNull(level, blockPos);
+
+            if (existingKnot == null && hasAnyLeadsToConnect(level, blockPos, player)) {
                 return InteractionResult.PASS;
             }
+
             if (stack.is(ModTagRegistry.CATENARY_ITEMS)) {
+                if (existingKnot != null && existingKnot.getSourceItem() != stack.getItem()) {
+                    return InteractionResult.FAIL;
+                }
+
                 if (level instanceof ServerLevel serverWorld) {
-                    ChainKnotEntity knot = ChainKnotEntity.getOrCreate(serverWorld, blockPos, stack.getItem());
-
-                    if (knot.getSourceItem() != stack.getItem()) return InteractionResult.PASS;
-
+                    ChainKnotEntity knot = existingKnot != null ? existingKnot : ChainKnotEntity.getOrCreate(serverWorld, blockPos, stack.getItem());
                     return knot.interact(player, hand);
                 }
                 return InteractionResult.SUCCESS;
             }
-            if (level instanceof ServerLevel serverWorld) {
-                return attachHeldChainsToBlock(player, serverWorld, blockPos);
-            }
-            if (!collectChainablesAround(level, blockPos, entity -> entity.getChainData(player) != null).isEmpty()) {
+
+            List<Chainable> draggedChains = collectChainablesAround(level, blockPos, entity -> entity.getChainData(player) != null);
+
+            if (!draggedChains.isEmpty()) {
+                if (existingKnot != null) {
+                    boolean hasMatch = draggedChains.stream().anyMatch(c -> c.getSourceItem() == existingKnot.getSourceItem());
+                    if (!hasMatch) {
+                        return InteractionResult.FAIL;
+                    }
+                }
+
+                if (level instanceof ServerLevel serverWorld) {
+                    return attachHeldChainsToBlock(player, serverWorld, blockPos);
+                }
                 return InteractionResult.SUCCESS;
-            } else {
-                return InteractionResult.PASS;
             }
         }
         return InteractionResult.PASS;
@@ -70,26 +82,39 @@ public class ChainItemCallbacks {
     public static InteractionResult attachHeldChainsToBlock(Player player, ServerLevel level, BlockPos pos) {
         List<Chainable> list = collectChainablesAround(level, pos, entity -> entity.getChainData(player) != null);
 
-        ChainKnotEntity chainKnotEntity = null;
+        ChainKnotEntity existingKnot = ChainKnotEntity.getOrNull(level, pos);
+        boolean attachedAny = false;
+
+        Item targetItem = existingKnot != null ? existingKnot.getSourceItem() : (list.isEmpty() ? null : list.getFirst().getSourceItem());
+
+        if (targetItem == null) return InteractionResult.PASS;
+
+        ChainKnotEntity chainKnotEntity = existingKnot;
+
         for (Chainable chainable : list) {
+            if (chainable.getSourceItem() != targetItem) continue;
+
             if (chainKnotEntity == null) {
-                chainKnotEntity = ChainKnotEntity.getOrCreate(level, pos, chainable.getSourceItem());
+                chainKnotEntity = ChainKnotEntity.getOrCreate(level, pos, targetItem);
                 chainKnotEntity.playPlacementSound();
             }
 
-            if (chainable.getSourceItem() != chainKnotEntity.getSourceItem()) continue;
-
             if (chainable.canAttachTo(chainKnotEntity)) {
                 Chainable.ChainData chainData = chainable.getChainData(player);
-                assert chainData != null;
-                chainable.attachChain(new Chainable.ChainData(chainKnotEntity, chainData.sourceItem), player, true);
+                if (chainData != null) {
+                    chainable.attachChain(new Chainable.ChainData(chainKnotEntity, chainData.sourceItem), player, true);
+                    attachedAny = true;
+                }
             }
         }
 
-        if (!list.isEmpty()) {
+        if (attachedAny) {
             level.gameEvent(GameEvent.BLOCK_ATTACH, pos, GameEvent.Context.of(player));
             return InteractionResult.SUCCESS;
         } else {
+            if (existingKnot == null && chainKnotEntity != null) {
+                chainKnotEntity.discard();
+            }
             return InteractionResult.PASS;
         }
     }
