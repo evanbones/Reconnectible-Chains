@@ -31,7 +31,7 @@ import java.util.function.Predicate;
 public class ChainItemCallbacks {
 
     public static InteractionResult chainUseEvent(Player player, Level level, InteractionHand hand, BlockHitResult hitResult) {
-        if (player == null || player.isCrouching()) return InteractionResult.PASS;
+        if (player == null) return InteractionResult.PASS;
 
         if (ChainRaycastHelper.tryAdjustSlack(player, hand)) {
             return InteractionResult.SUCCESS;
