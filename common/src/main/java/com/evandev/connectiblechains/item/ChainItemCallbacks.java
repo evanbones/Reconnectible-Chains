@@ -8,6 +8,7 @@ import com.evandev.connectiblechains.util.ChainRaycastHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
@@ -21,6 +22,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -48,13 +50,15 @@ public class ChainItemCallbacks {
                 return InteractionResult.PASS;
             }
 
+            Direction knotDir = determineKnotDirection(blockState, hitResult.getDirection());
+
             if (stack.is(ModTagRegistry.CATENARY_ITEMS)) {
                 if (existingKnot != null && existingKnot.getSourceItem() != stack.getItem()) {
                     return InteractionResult.FAIL;
                 }
 
                 if (level instanceof ServerLevel serverWorld) {
-                    ChainKnotEntity knot = existingKnot != null ? existingKnot : ChainKnotEntity.getOrCreate(serverWorld, blockPos, stack.getItem());
+                    ChainKnotEntity knot = existingKnot != null ? existingKnot : ChainKnotEntity.getOrCreate(serverWorld, blockPos, stack.getItem(), knotDir);
                     return knot.interact(player, hand);
                 }
                 return InteractionResult.SUCCESS;
@@ -71,7 +75,7 @@ public class ChainItemCallbacks {
                 }
 
                 if (level instanceof ServerLevel serverWorld) {
-                    return attachHeldChainsToBlock(player, serverWorld, blockPos);
+                    return attachHeldChainsToBlock(player, serverWorld, blockPos, knotDir);
                 }
                 return InteractionResult.SUCCESS;
             }
@@ -79,7 +83,26 @@ public class ChainItemCallbacks {
         return InteractionResult.PASS;
     }
 
-    public static InteractionResult attachHeldChainsToBlock(Player player, ServerLevel level, BlockPos pos) {
+    private static Direction determineKnotDirection(BlockState state, Direction hitFace) {
+        if (state.hasProperty(BlockStateProperties.AXIS)) {
+            Direction.Axis axis = state.getValue(BlockStateProperties.AXIS);
+            if (axis == Direction.Axis.Y) {
+                return Direction.UP;
+            }
+            if (hitFace.getAxis() == axis) {
+                return hitFace;
+            }
+            return Direction.fromAxisAndDirection(axis, Direction.AxisDirection.POSITIVE);
+        }
+
+        if (state.hasProperty(BlockStateProperties.FACING)) {
+            return state.getValue(BlockStateProperties.FACING);
+        }
+
+        return Direction.UP;
+    }
+
+    public static InteractionResult attachHeldChainsToBlock(Player player, ServerLevel level, BlockPos pos, Direction face) {
         List<Chainable> list = collectChainablesAround(level, pos, entity -> entity.getChainData(player) != null);
 
         ChainKnotEntity existingKnot = ChainKnotEntity.getOrNull(level, pos);
@@ -95,7 +118,7 @@ public class ChainItemCallbacks {
             if (chainable.getSourceItem() != targetItem) continue;
 
             if (chainKnotEntity == null) {
-                chainKnotEntity = ChainKnotEntity.getOrCreate(level, pos, targetItem);
+                chainKnotEntity = ChainKnotEntity.getOrCreate(level, pos, targetItem, face);
                 chainKnotEntity.playPlacementSound();
             }
 
