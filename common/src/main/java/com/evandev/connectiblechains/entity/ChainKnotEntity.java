@@ -9,6 +9,7 @@ import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.evandev.connectiblechains.util.ChainTracker;
 import com.evandev.connectiblechains.util.MathHelper;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
@@ -39,7 +40,7 @@ import java.util.HashSet;
 import java.util.List;
 
 public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLinkEntity {
-
+    public Direction attachedFace = Direction.UP;
     private HashSet<ChainData> chainDataSet = new HashSet<>();
     @NotNull
     private Item sourceItem;
@@ -49,9 +50,10 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         sourceItem = Items.CHAIN;
     }
 
-    public ChainKnotEntity(Level level, BlockPos pos, @NotNull Item sourceItem) {
+    public ChainKnotEntity(Level level, BlockPos pos, @NotNull Item sourceItem, Direction face) {
         super(ModEntityTypes.CHAIN_KNOT.get(), level, pos);
         this.sourceItem = sourceItem;
+        this.attachedFace = face != null ? face : Direction.UP;
         setPos(pos.getX(), pos.getY(), pos.getZ());
     }
 
@@ -66,10 +68,10 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         return null;
     }
 
-    public static ChainKnotEntity getOrCreate(Level level, BlockPos pos, @NotNull Item newSourceItem) {
+    public static ChainKnotEntity getOrCreate(Level level, BlockPos pos, @NotNull Item newSourceItem, Direction face) {
         ChainKnotEntity chainKnotEntity = getOrNull(level, pos);
         if (chainKnotEntity == null) {
-            chainKnotEntity = new ChainKnotEntity(level, pos, newSourceItem);
+            chainKnotEntity = new ChainKnotEntity(level, pos, newSourceItem, face);
             level.addFreshEntity(chainKnotEntity);
         }
         return chainKnotEntity;
@@ -204,12 +206,16 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     public void addAdditionalSaveData(@NotNull CompoundTag nbt) {
         super.addAdditionalSaveData(nbt);
         this.writeChainDataSetToNbt(nbt, this.chainDataSet);
+        nbt.putInt("AttachedFace", this.attachedFace.get3DDataValue());
     }
 
     @Override
     public void readAdditionalSaveData(@NotNull CompoundTag nbt) {
         super.readAdditionalSaveData(nbt);
         this.readChainDataFromNbt(nbt);
+        if (nbt.contains("AttachedFace")) {
+            this.attachedFace = Direction.from3DDataValue(nbt.getInt("AttachedFace"));
+        }
     }
 
     @Override
@@ -221,8 +227,8 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         double height = getType().getHeight();
 
         BlockState state = this.level().getBlockState(attachedBlockPos);
-        BlockState defaultState = state.getBlock().defaultBlockState();
-        VoxelShape shape = defaultState.getShape(this.level(), attachedBlockPos);
+        VoxelShape shape = state.getShape(this.level(), attachedBlockPos);
+
         if (!shape.isEmpty()) {
             AABB bounds = shape.bounds();
             double maxDim = Math.max(bounds.getXsize(), bounds.getZsize());
@@ -310,14 +316,16 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     @Override
     public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() {
         int id = BuiltInRegistries.ITEM.getId(getSourceItem());
-        return new ClientboundAddEntityPacket(this, id, this.getPos());
+        int data = id | (this.attachedFace.get3DDataValue() << 24);
+        return new ClientboundAddEntityPacket(this, data, this.getPos());
     }
 
     @Override
     public void recreateFromPacket(@NotNull ClientboundAddEntityPacket packet) {
         super.recreateFromPacket(packet);
-        int rawChainItemSourceId = packet.getData();
-        this.sourceItem = BuiltInRegistries.ITEM.byId(rawChainItemSourceId);
+        int data = packet.getData();
+        this.sourceItem = BuiltInRegistries.ITEM.byId(data & 0xFFFFFF);
+        this.attachedFace = Direction.from3DDataValue((data >> 24) & 0xFF);
     }
 
     @Override
@@ -333,8 +341,14 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         return new ItemStack(getSourceItem());
     }
 
+    @Override
     public Vec3 getChainPos(float delta) {
-        return this.getPosition(delta).add(0.0, 0.2, 0.0);
+        double offset = 0.2;
+        return this.getPosition(delta).add(
+                attachedFace.getStepX() * offset,
+                attachedFace.getStepY() * offset,
+                attachedFace.getStepZ() * offset
+        );
     }
 
     @Override

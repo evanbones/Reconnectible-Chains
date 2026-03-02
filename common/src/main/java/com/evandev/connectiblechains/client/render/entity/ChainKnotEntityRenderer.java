@@ -17,6 +17,7 @@ import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -72,17 +73,68 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
 
         if (distanceToCameraSqr <= 4096.0D) {
             matrices.pushPose();
+            Direction face = entity.attachedFace;
+
+            switch (face) {
+                case DOWN -> matrices.mulPose(new Quaternionf().rotateX((float) Math.PI));
+                case NORTH -> matrices.mulPose(new Quaternionf().rotateX((float) -Math.PI / 2f));
+                case SOUTH -> matrices.mulPose(new Quaternionf().rotateX((float) Math.PI / 2f));
+                case WEST -> matrices.mulPose(new Quaternionf().rotateZ((float) Math.PI / 2f));
+                case EAST -> matrices.mulPose(new Quaternionf().rotateZ((float) -Math.PI / 2f));
+                case UP -> {
+                }
+            }
+
             matrices.translate(0, 0.7, 0);
 
             float scaleXZ = 5 / 6f;
             BlockState blockState = entity.level().getBlockState(entity.getPos());
-            BlockState defaultState = blockState.getBlock().defaultBlockState();
-            VoxelShape shape = defaultState.getShape(entity.level(), entity.getPos());
+            VoxelShape shape = blockState.getShape(entity.level(), entity.getPos());
+
             if (!shape.isEmpty()) {
-                AABB bounds = shape.bounds();
-                double maxDim = Math.max(bounds.getXsize(), bounds.getZsize());
-                scaleXZ = (float) (maxDim + 0.0625) / 0.375f;
+                double lx = entity.getX() - Math.floor(entity.getX());
+                double ly = entity.getY() - Math.floor(entity.getY());
+                double lz = entity.getZ() - Math.floor(entity.getZ());
+
+                double push = 0.01;
+                lx -= face.getStepX() * push;
+                ly -= face.getStepY() * push;
+                lz -= face.getStepZ() * push;
+
+                AABB attachmentPoint = new AABB(lx - 0.01, ly - 0.01, lz - 0.01, lx + 0.01, ly + 0.01, lz + 0.01);
+                AABB bestBox = null;
+
+                for (AABB box : shape.toAabbs()) {
+                    if (box.intersects(attachmentPoint)) {
+                        bestBox = box;
+                        break;
+                    }
+                }
+
+                if (bestBox == null) {
+                    bestBox = shape.bounds();
+                }
+
+                double dim1 = 0, dim2 = 0;
+                switch (face.getAxis()) {
+                    case Y -> {
+                        dim1 = bestBox.getXsize();
+                        dim2 = bestBox.getZsize();
+                    }
+                    case Z -> {
+                        dim1 = bestBox.getXsize();
+                        dim2 = bestBox.getYsize();
+                    }
+                    case X -> {
+                        dim1 = bestBox.getYsize();
+                        dim2 = bestBox.getZsize();
+                    }
+                }
+
+                double minDim = Math.min(dim1, dim2);
+                scaleXZ = Math.min(1.5f, (float) (minDim + 0.0625) / 0.375f);
             }
+
             matrices.scale(scaleXZ, 1, scaleXZ);
 
             VertexConsumer vertexConsumer = vertexConsumers.getBuffer(this.model.renderType(getKnotTexture(state.sourceItem)));
@@ -154,25 +206,20 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
     public void updateRenderState(ChainKnotEntity entity, ChainKnotEntityRenderState state, float tickDelta) {
         HashSet<ChainKnotEntityRenderState.ChainData> result = new HashSet<>();
         Level level = entity.level();
+        Vec3 entityPos = entity.getPosition(tickDelta);
 
         for (Chainable.ChainData chainData : new HashSet<>(entity.getChainDataSet())) {
             Entity chainHolder = entity.getChainHolder(chainData);
             if (chainHolder == null) continue;
 
-            Vec3 offset = new Vec3(0, 0.3, 0);
             Vec3 srcPos = entity.getChainPos(tickDelta);
-            Vec3 dstPos;
-            if (chainHolder instanceof ChainKnotEntity chainKnotEntity) {
-                dstPos = chainKnotEntity.getChainPos(tickDelta);
-            } else {
-                dstPos = chainHolder.getRopeHoldPosition(tickDelta);
-            }
+            Vec3 dstPos = chainHolder instanceof ChainKnotEntity knot ? knot.getChainPos(tickDelta) : chainHolder.getRopeHoldPosition(tickDelta);
 
             BlockPos blockPosOfStart = BlockPos.containing(entity.getEyePosition(tickDelta));
             BlockPos blockPosOfEnd = BlockPos.containing(chainHolder.getEyePosition(tickDelta));
 
             ChainKnotEntityRenderState.ChainData renderChainData = new ChainKnotEntityRenderState.ChainData();
-            renderChainData.offset = offset;
+            renderChainData.offset = srcPos.subtract(entityPos);
             renderChainData.startPos = srcPos;
             renderChainData.endPos = dstPos;
             renderChainData.chainedEntityBlockLight = level.getBrightness(LightLayer.BLOCK, blockPosOfStart);
@@ -193,16 +240,11 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
                 Vec3 srcPos = other.getChainPos(tickDelta);
                 Vec3 dstPos = entity.getChainPos(tickDelta);
 
-                Vec3 otherPos = otherEntity.getPosition(tickDelta);
-                Vec3 entityPos = entity.getPosition(tickDelta);
-                double offsetY = (otherEntity instanceof ChainKnotEntity) ? 0.3 : (srcPos.y - otherPos.y);
-                Vec3 offset = new Vec3(otherPos.x - entityPos.x, (otherPos.y - entityPos.y) + offsetY, otherPos.z - entityPos.z);
-
                 BlockPos blockPosOfStart = BlockPos.containing(otherEntity.getEyePosition(tickDelta));
                 BlockPos blockPosOfEnd = BlockPos.containing(entity.getEyePosition(tickDelta));
 
                 ChainKnotEntityRenderState.ChainData renderChainData = new ChainKnotEntityRenderState.ChainData();
-                renderChainData.offset = offset;
+                renderChainData.offset = srcPos.subtract(entityPos);
                 renderChainData.startPos = srcPos;
                 renderChainData.endPos = dstPos;
                 renderChainData.chainedEntityBlockLight = level.getBrightness(LightLayer.BLOCK, blockPosOfStart);
