@@ -1,6 +1,6 @@
 package com.evandev.connectiblechains.client.render.entity.catenary;
 
-import com.evandev.connectiblechains.client.render.entity.ChainModel;
+import com.evandev.connectiblechains.client.render.entity.model.ChainModel;
 import com.evandev.connectiblechains.client.render.entity.UVRect;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.resources.ResourceLocation;

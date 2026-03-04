@@ -1,7 +1,12 @@
 ### Added
 
-- Added support for sideways chain knot placement (Quark Posts).
+- Added default support for Architect's Palette chains.
+
+### Changed
+
+- Chain collisions are now disabled by default.
+- Increased max length for Chains to 512 for the utterly deranged.
 
 ### Fixed
 
-- Fixed edge-case issue with Supplementaries Rope placement.
+- Fixed more edge-case bugs with chain knot block updates.

@@ -1,4 +1,4 @@
-package com.evandev.connectiblechains.client.render.entity;
+package com.evandev.connectiblechains.client.render.entity.model;
 
 import com.evandev.connectiblechains.CommonClass;
 import com.mojang.blaze3d.vertex.PoseStack;

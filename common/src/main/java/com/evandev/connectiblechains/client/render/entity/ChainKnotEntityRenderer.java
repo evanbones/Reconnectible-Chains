@@ -98,12 +98,12 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
                 double ly = entity.getY() - Math.floor(entity.getY());
                 double lz = entity.getZ() - Math.floor(entity.getZ());
 
-                double push = 0.01;
+                double push = 0.05;
                 lx -= face.getStepX() * push;
                 ly -= face.getStepY() * push;
                 lz -= face.getStepZ() * push;
 
-                AABB attachmentPoint = new AABB(lx - 0.01, ly - 0.01, lz - 0.01, lx + 0.01, ly + 0.01, lz + 0.01);
+                AABB attachmentPoint = new AABB(lx - 0.05, ly - 0.05, lz - 0.05, lx + 0.05, ly + 0.05, lz + 0.05);
                 AABB bestBox = null;
 
                 for (AABB box : shape.toAabbs()) {
@@ -134,7 +134,8 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
                 }
 
                 double minDim = Math.min(dim1, dim2);
-                scaleXZ = Math.min(1.5f, (float) (minDim + 0.0625) / 0.375f);
+
+                scaleXZ = Math.max(0.5f, Math.min(1.5f, (float) (minDim + 0.0625) / 0.375f));
             }
 
             matrices.scale(scaleXZ, 1, scaleXZ);

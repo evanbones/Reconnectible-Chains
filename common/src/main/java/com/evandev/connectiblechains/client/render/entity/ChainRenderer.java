@@ -1,6 +1,7 @@
 package com.evandev.connectiblechains.client.render.entity;
 
 import com.evandev.connectiblechains.client.render.entity.catenary.CatenaryRenderer;
+import com.evandev.connectiblechains.client.render.entity.model.ChainModel;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import org.joml.Vector3f;
