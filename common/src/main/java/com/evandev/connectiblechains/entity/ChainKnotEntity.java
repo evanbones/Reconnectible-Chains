@@ -28,11 +28,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -226,26 +224,25 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         double width = getType().getWidth() / 2.0;
         double height = getType().getHeight();
 
-        BlockState state = this.level().getBlockState(attachedBlockPos);
-        VoxelShape shape = state.getShape(this.level(), attachedBlockPos);
-
-        if (!shape.isEmpty()) {
-            AABB bounds = shape.bounds();
-            double maxDim = Math.max(bounds.getXsize(), bounds.getZsize());
-            width = Math.max(width, (maxDim + 0.0625) / 2.0);
-        }
-
         setBoundingBox(new AABB(getX() - width, getY(), getZ() - width, getX() + width, getY() + height, getZ() + width));
     }
 
     @Override
     public boolean shouldRenderAtSqrDistance(double distance) {
+        double maxRange = Chainable.getMaxChainLength();
+        double effectiveRange = maxRange + 64.0;
+
         double d = this.getBoundingBoxForCulling().getSize();
         if (Double.isNaN(d)) {
             d = 1.0D;
         }
         d *= 64.0D * getViewScale();
-        return distance < d * d;
+
+        if (!this.getChainDataSet().isEmpty()) {
+            return distance < Math.max(d * d, effectiveRange * effectiveRange);
+        }
+
+        return distance < d * d || super.shouldRenderAtSqrDistance(distance);
     }
 
     @Override
@@ -343,7 +340,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
     @Override
     public Vec3 getChainPos(float delta) {
-        double offset = 0.2;
+        double offset = 0.3;
         return this.getPosition(delta).add(
                 attachedFace.getStepX() * offset,
                 attachedFace.getStepY() * offset,

@@ -13,7 +13,7 @@ public class ModConfig implements ConfigData {
 
     @ConfigEntry.Gui.Tooltip(count = 3)
     private float chainHangAmount = 8.0F;
-    @ConfigEntry.BoundedDiscrete(max = 128)
+    @ConfigEntry.BoundedDiscrete(max = 512)
     @ConfigEntry.Gui.Tooltip()
     private int maxChainRange = 32;
     @ConfigEntry.BoundedDiscrete(min = 1, max = 8)
@@ -24,7 +24,7 @@ public class ModConfig implements ConfigData {
     private boolean showToolTip = true;
 
     @ConfigEntry.Gui.Tooltip()
-    private boolean collisionsEnabled = true;
+    private boolean collisionsEnabled = false;
 
     @ConfigEntry.Gui.Tooltip()
     private boolean debugDraw = Services.PLATFORM.isDevelopmentEnvironment();

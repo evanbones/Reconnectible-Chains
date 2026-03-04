@@ -7,6 +7,10 @@
       "required": false
     },
     {
+      "id": "architects_palette:nether_brass_chain",
+      "required": false
+    },
+    {
       "id": "mcwlights:golden_chain",
       "required": false
     },

@@ -1,7 +1,7 @@
 package com.evandev.connectiblechains.client.render.entity.catenary;
 
 import com.evandev.connectiblechains.CommonClass;
-import com.evandev.connectiblechains.client.render.entity.ChainModel;
+import com.evandev.connectiblechains.client.render.entity.model.ChainModel;
 import com.evandev.connectiblechains.client.render.entity.UVRect;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
