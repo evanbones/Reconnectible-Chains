@@ -33,11 +33,19 @@ public class ChainTextureManager extends SimplePreparableReloadListener<Map<Iden
     private Map<Identifier, CatenaryModel> models = new Object2ObjectOpenHashMap<>(EXPECTED_UNIQUE_CHAIN_COUNT);
 
     private static @NotNull Identifier defaultChainTextureId(Identifier itemId) {
-        return Identifier.fromNamespaceAndPath(itemId.getNamespace(), "block/%s".formatted(itemId.getPath()));
+        String path = itemId.getPath();
+        if (path.startsWith("waxed_")) {
+            path = path.substring(6);
+        }
+        return Identifier.fromNamespaceAndPath(itemId.getNamespace(), "block/%s".formatted(path));
     }
 
     private static @NotNull Identifier defaultKnotTextureId(Identifier itemId) {
-        return Identifier.fromNamespaceAndPath(itemId.getNamespace(), "item/%s".formatted(itemId.getPath()));
+        String path = itemId.getPath();
+        if (path.startsWith("waxed_")) {
+            path = path.substring(6);
+        }
+        return Identifier.fromNamespaceAndPath(itemId.getNamespace(), "item/%s".formatted(path));
     }
 
     @Override
