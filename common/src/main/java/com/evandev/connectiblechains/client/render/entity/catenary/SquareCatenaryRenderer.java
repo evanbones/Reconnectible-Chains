@@ -1,8 +1,8 @@
 package com.evandev.connectiblechains.client.render.entity.catenary;
 
 import com.evandev.connectiblechains.CommonClass;
-import com.evandev.connectiblechains.client.render.entity.model.ChainModel;
 import com.evandev.connectiblechains.client.render.entity.UVRect;
+import com.evandev.connectiblechains.client.render.entity.model.ChainModel;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -102,6 +102,7 @@ public class SquareCatenaryRenderer extends CatenaryRenderer {
             Vector3f normalA = new Vector3f(), normalB = new Vector3f();
             normal.rotate(rotatorA, normalA);
             normal.rotate(rotatorB, normalB);
+
             normalA.normalize(chainHalfWidthA * SQRT_2);
             normalB.normalize(chainHalfWidthB * SQRT_2);
 
@@ -136,24 +137,14 @@ public class SquareCatenaryRenderer extends CatenaryRenderer {
     }
 
     private void build4Sides(ChainModel.Builder builder, float f0, float f1, float uvv0, float uvv1, Vector3f vert00A, Vector3f vert01A, Vector3f vert10A, Vector3f vert11A, Vector3f vert00B, Vector3f vert01B, Vector3f vert10B, Vector3f vert11B) {
-        builder.fraction(f0).vertex(vert00A).uv(SIDE_A.x0() / 16f, uvv0).next();
-        builder.fraction(f0).vertex(vert01B).uv(SIDE_A.x1() / 16f, uvv0).next();
-        builder.fraction(f1).vertex(vert11B).uv(SIDE_A.x1() / 16f, uvv1).next();
-        builder.fraction(f1).vertex(vert10A).uv(SIDE_A.x0() / 16f, uvv1).next();
+        float a0 = SIDE_A.x0() / 16f;
+        float a1 = SIDE_A.x1() / 16f;
+        float b0 = SIDE_B.x0() / 16f;
+        float b1 = SIDE_B.x1() / 16f;
 
-        builder.fraction(f0).vertex(vert00A).uv(SIDE_B.x0() / 16f, uvv0).next();
-        builder.fraction(f0).vertex(vert00B).uv(SIDE_B.x1() / 16f, uvv0).next();
-        builder.fraction(f1).vertex(vert10B).uv(SIDE_B.x1() / 16f, uvv1).next();
-        builder.fraction(f1).vertex(vert10A).uv(SIDE_B.x0() / 16f, uvv1).next();
-
-        builder.fraction(f0).vertex(vert00B).uv(SIDE_A.x1() / 16f, uvv0).next();
-        builder.fraction(f0).vertex(vert01A).uv(SIDE_A.x0() / 16f, uvv0).next();
-        builder.fraction(f1).vertex(vert11A).uv(SIDE_A.x0() / 16f, uvv1).next();
-        builder.fraction(f1).vertex(vert10B).uv(SIDE_A.x1() / 16f, uvv1).next();
-
-        builder.fraction(f0).vertex(vert01A).uv(SIDE_B.x0() / 16f, uvv0).next();
-        builder.fraction(f0).vertex(vert01B).uv(SIDE_B.x1() / 16f, uvv0).next();
-        builder.fraction(f1).vertex(vert11B).uv(SIDE_B.x1() / 16f, uvv1).next();
-        builder.fraction(f1).vertex(vert11A).uv(SIDE_B.x0() / 16f, uvv1).next();
+        addQuad(builder, f0, f1, a0, a1, uvv0, uvv1, vert00A, vert01B, vert11B, vert10A);
+        addQuad(builder, f0, f1, b0, b1, uvv0, uvv1, vert00A, vert00B, vert10B, vert10A);
+        addQuad(builder, f0, f1, a1, a0, uvv0, uvv1, vert00B, vert01A, vert11A, vert10B);
+        addQuad(builder, f0, f1, b0, b1, uvv0, uvv1, vert01A, vert01B, vert11B, vert11A);
     }
 }

@@ -18,7 +18,7 @@ public class PlusCatenaryRenderer extends CatenaryRenderer {
     @Override
     public ChainModel buildModel(Vector3f chainVec, float slack) {
         float desiredSegmentLength = 1f / CommonClass.runtimeConfig.getQuality();
-        int initialCapacity = (int) (2f * chainVec.length() / desiredSegmentLength);
+        int initialCapacity = (int) (4f * chainVec.length() / desiredSegmentLength);
         ChainModel.Builder builder = ChainModel.builder(initialCapacity);
 
         if (chainVec.x() == 0F && chainVec.z() == 0F) {
@@ -47,10 +47,8 @@ public class PlusCatenaryRenderer extends CatenaryRenderer {
 
         float f0 = 0F, f1 = 1F;
         float uvv0 = 0F, uvv1 = Math.abs(endPosition.y()) / CHAIN_SCALE;
-        builder.fraction(f0).vertex(vert00).uv(uv.x0() / 16f, uvv0).next();
-        builder.fraction(f0).vertex(vert01).uv(uv.x1() / 16f, uvv0).next();
-        builder.fraction(f1).vertex(vert11).uv(uv.x1() / 16f, uvv1).next();
-        builder.fraction(f1).vertex(vert10).uv(uv.x0() / 16f, uvv1).next();
+
+        addDoubleSidedQuad(builder, f0, f1, uv.x0() / 16f, uv.x1() / 16f, uvv0, uvv1, vert00, vert01, vert11, vert10);
     }
 
     private void buildFace(ChainModel.Builder builder, Vector3f endPosition, float angle, UVRect uv, float slack) {
@@ -106,10 +104,7 @@ public class PlusCatenaryRenderer extends CatenaryRenderer {
             uvv0 = uvv1;
             uvv1 = uvv0 + actualSegmentLength / CHAIN_SCALE;
 
-            builder.fraction(f0).vertex(vert00).uv(uv.x0() / 16f, uvv0).next();
-            builder.fraction(f0).vertex(vert01).uv(uv.x1() / 16f, uvv0).next();
-            builder.fraction(f1).vertex(vert11).uv(uv.x1() / 16f, uvv1).next();
-            builder.fraction(f1).vertex(vert10).uv(uv.x0() / 16f, uvv1).next();
+            addDoubleSidedQuad(builder, f0, f1, uv.x0() / 16f, uv.x1() / 16f, uvv0, uvv1, vert00, vert01, vert11, vert10);
 
             if (x >= distanceXZ) {
                 break;

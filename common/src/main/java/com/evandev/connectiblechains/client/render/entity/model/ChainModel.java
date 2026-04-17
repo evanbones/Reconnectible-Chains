@@ -13,7 +13,7 @@ import org.joml.Vector4f;
 import java.util.ArrayList;
 import java.util.List;
 
-public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions) {
+public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions, float[] normals) {
 
     public static Builder builder(int initialCapacity) {
         return new Builder(initialCapacity);
@@ -21,6 +21,7 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions) 
 
     public void render(VertexConsumer buffer, PoseStack matrices, int bLight0, int bLight1, int sLight0, int sLight1) {
         Matrix4f modelMatrix = matrices.last().pose();
+        org.joml.Matrix3f normalMatrix = matrices.last().normal();
         int count = vertices.length / 3;
 
         for (int i = 0; i < count; i++) {
@@ -32,12 +33,15 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions) 
             Vector4f pos = new Vector4f(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2], 1.0F);
             pos.mul(modelMatrix);
 
+            Vector3f norm = new Vector3f(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
+            normalMatrix.transform(norm);
+
             buffer.addVertex(pos.x, pos.y, pos.z)
-                    .setColor(0.8f, 0.8f, 0.8f, 1f)
+                    .setColor(1.0f, 1.0f, 1.0f, 1f)
                     .setUv(uvs[i * 2], uvs[i * 2 + 1])
                     .setOverlay(OverlayTexture.NO_OVERLAY)
                     .setLight(light)
-                    .setNormal(1, 1, 1);
+                    .setNormal(norm.x(), norm.y(), norm.z());
 
             if (CommonClass.runtimeConfig.doDebugDraw()) {
                 buffer.setLineWidth(1.0f);
@@ -49,6 +53,7 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions) 
         private final List<Float> vertices;
         private final List<Float> uvs;
         private final List<Float> lightFractions;
+        private final List<Float> normals;
         private int size;
         private float currentFraction = 0f;
 
@@ -56,10 +61,18 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions) 
             vertices = new ArrayList<>(initialCapacity * 3);
             uvs = new ArrayList<>(initialCapacity * 2);
             lightFractions = new ArrayList<>(initialCapacity);
+            normals = new ArrayList<>(initialCapacity * 3);
         }
 
         public Builder fraction(float f) {
             this.currentFraction = f;
+            return this;
+        }
+
+        public Builder normal(Vector3f n) {
+            normals.add(n.x());
+            normals.add(n.y());
+            normals.add(n.z());
             return this;
         }
 
@@ -86,7 +99,7 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions) 
             if (uvs.size() != size * 2) CommonClass.LOGGER.error("Wrong count of uvs");
             if (lightFractions.size() != size) CommonClass.LOGGER.error("Wrong count of light fractions");
 
-            return new ChainModel(toFloatArray(vertices), toFloatArray(uvs), toFloatArray(lightFractions));
+            return new ChainModel(toFloatArray(vertices), toFloatArray(uvs), toFloatArray(lightFractions), toFloatArray(normals));
         }
 
         private float[] toFloatArray(List<Float> floats) {

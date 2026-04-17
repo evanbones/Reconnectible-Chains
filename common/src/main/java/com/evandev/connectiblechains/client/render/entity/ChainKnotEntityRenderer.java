@@ -265,7 +265,8 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         vector.mul(matrix);
         buffer.addVertex(vector.x, vector.y, vector.z)
                 .setColor(r, g, b, a)
-                .setNormal((float) normal.x, (float) normal.y, (float) normal.z);
+                .setNormal((float) normal.x, (float) normal.y, (float) normal.z)
+                .setLineWidth(1.0F);
     }
 
     private ChainTextureManager getTextureManager() {
