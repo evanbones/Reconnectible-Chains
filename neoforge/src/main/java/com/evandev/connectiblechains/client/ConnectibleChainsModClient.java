@@ -7,17 +7,20 @@ import com.evandev.connectiblechains.entity.ModEntityTypes;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.ChainBreakC2SPacket;
 import com.evandev.connectiblechains.util.ChainRaycastHelper;
+import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 public class ConnectibleChainsModClient {
-    @EventBusSubscriber(modid = CommonClass.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = CommonClass.MODID, value = Dist.CLIENT)
     public static class ClientModBusEvents {
 
         @SubscribeEvent
@@ -28,11 +31,14 @@ public class ConnectibleChainsModClient {
         }
 
         @SubscribeEvent
-        public static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
+        public static void registerReloadListeners(AddClientReloadListenersEvent event) {
             if (ClientInitializer.getInstance() == null) {
                 new ClientInitializer().onInitializeClient();
             }
-            event.registerReloadListener(ClientInitializer.getInstance().getChainTextureManager());
+            event.addListener(
+                    Identifier.fromNamespaceAndPath(CommonClass.MODID, "chain_textures"),
+                    ClientInitializer.getInstance().getChainTextureManager()
+            );
         }
 
         @SubscribeEvent
@@ -51,7 +57,7 @@ public class ConnectibleChainsModClient {
         }
     }
 
-    @EventBusSubscriber(modid = CommonClass.MODID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = CommonClass.MODID, value = Dist.CLIENT)
     public static class ClientForgeEvents {
 
         @SubscribeEvent
@@ -60,7 +66,7 @@ public class ConnectibleChainsModClient {
         }
 
         @SubscribeEvent
-        public static void onClientJoin(net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingIn event) {
+        public static void onClientJoin(ClientPlayerNetworkEvent.LoggingIn event) {
             CommonClass.runtimeConfig.copyFrom(CommonClass.fileConfig);
             if (ClientInitializer.getInstance() != null) {
                 ClientInitializer.getInstance().getChainKnotEntityRenderer()
@@ -69,9 +75,9 @@ public class ConnectibleChainsModClient {
         }
 
         @SubscribeEvent
-        public static void onLeftClickEmpty(net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.LeftClickEmpty event) {
+        public static void onLeftClickEmpty(PlayerInteractEvent.LeftClickEmpty event) {
             if (ChainRaycastHelper.tryBreakChain(event.getEntity())) {
-                PacketDistributor.sendToServer(ChainBreakC2SPacket.INSTANCE);
+                ClientPacketDistributor.sendToServer(ChainBreakC2SPacket.INSTANCE);
             }
         }
     }

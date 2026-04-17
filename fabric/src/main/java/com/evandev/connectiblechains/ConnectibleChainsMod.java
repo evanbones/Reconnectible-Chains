@@ -12,7 +12,7 @@ import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 
 public class ConnectibleChainsMod implements ModInitializer {
 
@@ -21,7 +21,7 @@ public class ConnectibleChainsMod implements ModInitializer {
         FabricNetworkHelper.init();
         CommonClass.init();
 
-        PayloadTypeRegistry.playC2S().register(ChainBreakC2SPacket.TYPE, ChainBreakC2SPacket.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(ChainBreakC2SPacket.TYPE, ChainBreakC2SPacket.STREAM_CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(ChainBreakC2SPacket.TYPE, (payload, context) -> {
             context.server().execute(() -> {
@@ -33,9 +33,9 @@ public class ConnectibleChainsMod implements ModInitializer {
 
         UseItemCallback.EVENT.register((player, level, hand) -> {
             if (ChainRaycastHelper.tryAdjustSlack(player, hand)) {
-                return InteractionResultHolder.success(player.getItemInHand(hand));
+                return InteractionResult.SUCCESS;
             }
-            return InteractionResultHolder.pass(player.getItemInHand(hand));
+            return InteractionResult.PASS;
         });
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->

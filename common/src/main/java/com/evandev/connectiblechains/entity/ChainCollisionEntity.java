@@ -3,7 +3,6 @@ package com.evandev.connectiblechains.entity;
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.util.MathHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
@@ -22,6 +21,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -86,12 +87,12 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
         Entity chainHolder = chainedEntity.getChainHolder(chainData);
         assert chainHolder != null;
 
-        Vec3 srcPos = chainedEntity.getChainPos(1);
+        Vec3 srcPos = chainedEntity.getChainPos(1.0f);
         Vec3 dstPos;
         if (chainHolder instanceof ChainKnotEntity chainKnotEntity) {
-            dstPos = chainKnotEntity.getChainPos(1);
+            dstPos = chainKnotEntity.getChainPos(1.0f);
         } else {
-            dstPos = chainHolder.getLeashOffset(1).add(chainHolder.position());
+            dstPos = chainHolder.getRopeHoldPosition(1.0f);
         }
 
         Vec3 tmp = dstPos;
@@ -153,18 +154,18 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
     @Override
     public void tick() {
         super.tick();
-        if (level().isClientSide) return;
+        if (level().isClientSide()) return;
         if (this.link == null || !this.link.isAlive()) {
             this.discard();
         }
     }
 
     @Override
-    protected void readAdditionalSaveData(@NotNull CompoundTag nbt) {
+    protected void readAdditionalSaveData(@NotNull ValueInput input) {
     }
 
     @Override
-    protected void addAdditionalSaveData(@NotNull CompoundTag nbt) {
+    protected void addAdditionalSaveData(@NotNull ValueOutput output) {
     }
 
     @Override
@@ -173,7 +174,7 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
     }
 
     @Override
-    public boolean canBeCollidedWith() {
+    public boolean canBeCollidedWith(@Nullable Entity other) {
         return true;
     }
 
@@ -185,9 +186,7 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
     }
 
     @Override
-    public boolean hurt(@NotNull DamageSource source, float amount) {
-        if (level().isClientSide) return false;
-
+    public boolean hurtServer(@NotNull ServerLevel level, @NotNull DamageSource source, float amount) {
         if (source.getEntity() instanceof Player player) {
             if (!player.getMainHandItem().is(Items.SHEARS)) return false;
 
@@ -210,7 +209,7 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
     }
 
     @Override
-    public @NotNull InteractionResult interact(@NotNull Player player, @NotNull InteractionHand hand) {
+    public @NotNull InteractionResult interact(@NotNull Player player, @NotNull InteractionHand hand, Vec3 location) {
         return InteractionResult.PASS;
     }
 

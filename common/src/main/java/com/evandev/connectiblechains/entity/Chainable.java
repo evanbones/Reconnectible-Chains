@@ -8,11 +8,9 @@ import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.mojang.datafixers.util.Either;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
@@ -20,9 +18,12 @@ import net.minecraft.world.entity.decoration.HangingEntity;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -46,34 +47,40 @@ public interface Chainable {
         return false;
     }
 
-    private static <E extends HangingEntity & Chainable> HashSet<ChainData> readChainDataSet(E entity, CompoundTag nbt) {
+    private static <E extends HangingEntity & Chainable> HashSet<ChainData> readChainDataSet(E entity, ValueInput input) {
         HashSet<ChainData> result = new HashSet<>();
-        if (nbt.contains(CHAINS_NBT_KEY, Tag.TAG_LIST)) {
-            ListTag list = nbt.getList(CHAINS_NBT_KEY, Tag.TAG_COMPOUND);
-            for (Tag element : list) {
-                if (!(element instanceof CompoundTag compound)) continue;
 
+        input.childrenList(CHAINS_NBT_KEY).ifPresent(list -> {
+            for (ValueInput element : list) {
                 ChainData newChainData = null;
-                Item source = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(compound.getString(SOURCE_ITEM_KEY)));
+                String sourceItemStr = element.getStringOr(SOURCE_ITEM_KEY, "minecraft:chain");
+                Identifier itemId = Identifier.tryParse(sourceItemStr);
+                Item source = itemId != null ? BuiltInRegistries.ITEM.getOptional(itemId).orElse(Items.IRON_CHAIN) : Items.IRON_CHAIN;
 
-                if (compound.hasUUID("UUID")) {
-                    newChainData = new ChainData(Either.left(compound.getUUID("UUID")), source);
-                } else if (compound.contains("DestX")) {
-                    BlockPos desPos = new BlockPos(compound.getInt("DestX"), compound.getInt("DestY"), compound.getInt("DestZ"));
+                Optional<UUID> uuidOpt = element.read("UUID", UUIDUtil.CODEC);
+                Optional<Integer> destX = element.getInt("DestX");
+                Optional<Integer> relX = element.getInt("RelX");
+
+                if (uuidOpt.isPresent()) {
+                    newChainData = new ChainData(Either.left(uuidOpt.get()), source);
+                } else if (destX.isPresent()) {
+                    BlockPos desPos = new BlockPos(destX.get(), element.getIntOr("DestY", 0), element.getIntOr("DestZ", 0));
                     BlockPos relPos = desPos.subtract(entity.getPos());
-                    Either<UUID, BlockPos> either = Either.right(relPos);
-                    newChainData = new ChainData(either, source);
-                } else if (compound.contains("RelX")) {
-                    var relPos = new BlockPos(compound.getInt("RelX"), compound.getInt("RelY"), compound.getInt("RelZ"));
+                    newChainData = new ChainData(Either.right(relPos), source);
+                } else if (relX.isPresent()) {
+                    BlockPos relPos = new BlockPos(relX.get(), element.getIntOr("RelY", 0), element.getIntOr("RelZ", 0));
                     newChainData = new ChainData(Either.right(relPos), source);
                 }
 
                 if (newChainData != null) {
-                    if (compound.contains("Slack")) newChainData.customSlack = compound.getFloat("Slack");
+                    float slack = element.getFloatOr("Slack", -1f);
+                    if (slack >= 0) {
+                        newChainData.customSlack = slack;
+                    }
                     result.add(newChainData);
                 }
             }
-        }
+        });
         return result;
     }
 
@@ -121,7 +128,7 @@ public interface Chainable {
             entity.onChainDetached(chainData);
             if (entity.level() instanceof ServerLevel serverWorld) {
                 if (dropItem) {
-                    entity.spawnAtLocation(chainData.sourceItem);
+                    entity.spawnAtLocation(serverWorld, new ItemStack(chainData.sourceItem), 0.0f);
                 }
 
                 if (sendPacket) {
@@ -147,7 +154,7 @@ public interface Chainable {
 
         if (incoming.isEmpty()) {
             knot.discard();
-            knot.dropItem(null);
+            knot.dropItem(level, null);
         }
     }
 
@@ -180,7 +187,7 @@ public interface Chainable {
                 if (entity.isRemoved() || chainHolder.isRemoved()) {
                     Entity.RemovalReason reason = entity.isRemoved() ? entity.getRemovalReason() : chainHolder.getRemovalReason();
                     if (reason != null && reason.shouldDestroy()) {
-                        if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+                        if (level.getGameRules().get(GameRules.ENTITY_DROPS)) {
                             entity.detachChain(chainData);
                         } else {
                             entity.detachChainWithoutDrop(chainData);
@@ -213,7 +220,7 @@ public interface Chainable {
             return null;
         }
 
-        if (chainData.unresolvedChainHolderId != 0 && entity.level().isClientSide) {
+        if (chainData.unresolvedChainHolderId != 0 && entity.level().isClientSide()) {
             Entity chainHolder = entity.level().getEntity(chainData.unresolvedChainHolderId);
             if (chainHolder != null) {
                 ChainData newData = new ChainData(chainHolder, chainData.sourceItem);
@@ -229,7 +236,7 @@ public interface Chainable {
         if (sourceItem instanceof BlockItem blockItem) {
             return blockItem.getBlock().defaultBlockState().getSoundType();
         } else if (new ItemStack(sourceItem).is(ModTagRegistry.ROPES)) {
-            return new SoundType(1.0f, 1.0f, SoundEvents.LEASH_KNOT_BREAK, SoundType.WOOL.getStepSound(), SoundEvents.LEASH_KNOT_PLACE, SoundType.WOOL.getHitSound(), SoundType.WOOL.getFallSound());
+            return new SoundType(1.0f, 1.0f, SoundEvents.LEAD_BREAK, SoundType.WOOL.getStepSound(), SoundEvents.LEAD_TIED, SoundType.WOOL.getHitSound(), SoundType.WOOL.getFallSound());
         }
         return SoundType.CHAIN;
     }
@@ -255,49 +262,55 @@ public interface Chainable {
         this.replaceChainData(oldChainData, newChainData);
     }
 
-    default void readChainDataFromNbt(CompoundTag nbt) {
-        setSourceItem(BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(nbt.getString(SOURCE_ITEM_KEY))));
-        HashSet<ChainData> chainData = readChainDataSet((HangingEntity & Chainable) this, nbt);
+    default void readChainDataFromNbt(ValueInput input) {
+        input.getString(SOURCE_ITEM_KEY).ifPresent(s -> {
+            Identifier id = Identifier.tryParse(s);
+            if (id != null) BuiltInRegistries.ITEM.getOptional(id).ifPresent(this::setSourceItem);
+        });
+        HashSet<ChainData> chainData = readChainDataSet((HangingEntity & Chainable) this, input);
         if (!this.getChainDataSet().isEmpty() && chainData.isEmpty()) {
             this.detachAllChainsWithoutDrop();
         }
         this.setChainData(chainData);
     }
 
-    default void writeChainDataSetToNbt(CompoundTag nbt, HashSet<ChainData> chainDataSet) {
-        nbt.putString(SOURCE_ITEM_KEY, BuiltInRegistries.ITEM.getKey(getSourceItem()).toString());
+    default void writeChainDataSetToNbt(ValueOutput output, HashSet<ChainData> chainDataSet) {
+        output.putString(SOURCE_ITEM_KEY, BuiltInRegistries.ITEM.getKey(getSourceItem()).toString());
         BlockPos relativeTo = ((HangingEntity) this).getPos();
 
-        ListTag linksTag = new ListTag();
+        List<ChainData> validChains = new ArrayList<>();
         for (ChainData chainData : chainDataSet) {
-            Either<UUID, BlockPos> either = chainData.unresolvedChainData;
-            if (chainData.chainHolder instanceof ChainKnotEntity chainKnotEntity) {
-                either = Either.right(chainKnotEntity.getPos().subtract(relativeTo));
-            } else if (chainData.chainHolder != null) {
-                either = Either.left(chainData.chainHolder.getUUID());
-            }
-
-            if (either != null) {
-                String sourceItem = BuiltInRegistries.ITEM.getKey(chainData.sourceItem).toString();
-                linksTag.add(either.map(uuid -> {
-                    CompoundTag nbtCompound = new CompoundTag();
-                    nbtCompound.putUUID("UUID", uuid);
-                    nbtCompound.putString(SOURCE_ITEM_KEY, sourceItem);
-                    nbtCompound.putFloat("Slack", chainData.customSlack);
-                    return nbtCompound;
-                }, blockPos -> {
-                    CompoundTag nbtCompound = new CompoundTag();
-                    nbtCompound.putInt("RelX", blockPos.getX());
-                    nbtCompound.putInt("RelY", blockPos.getY());
-                    nbtCompound.putInt("RelZ", blockPos.getZ());
-                    nbtCompound.putString(SOURCE_ITEM_KEY, sourceItem);
-                    nbtCompound.putFloat("Slack", chainData.customSlack);
-                    return nbtCompound;
-                }));
+            if (chainData.chainHolder != null || chainData.unresolvedChainData != null) {
+                validChains.add(chainData);
             }
         }
-        if (!linksTag.isEmpty()) {
-            nbt.put(CHAINS_NBT_KEY, linksTag);
+
+        if (!validChains.isEmpty()) {
+            ValueOutput.ValueOutputList listOutput = output.childrenList(CHAINS_NBT_KEY);
+
+            for (ChainData chainData : validChains) {
+                Either<UUID, BlockPos> either = chainData.unresolvedChainData;
+                if (chainData.chainHolder instanceof ChainKnotEntity chainKnotEntity) {
+                    either = Either.right(chainKnotEntity.getPos().subtract(relativeTo));
+                } else if (chainData.chainHolder != null) {
+                    either = Either.left(chainData.chainHolder.getUUID());
+                }
+
+                if (either != null) {
+                    ValueOutput elementOutput = listOutput.addChild();
+                    String sourceItem = BuiltInRegistries.ITEM.getKey(chainData.sourceItem).toString();
+                    elementOutput.putString(SOURCE_ITEM_KEY, sourceItem);
+                    elementOutput.putFloat("Slack", chainData.customSlack);
+
+                    either.ifLeft(uuid -> {
+                        elementOutput.store("UUID", UUIDUtil.CODEC, uuid);
+                    }).ifRight(blockPos -> {
+                        elementOutput.putInt("RelX", blockPos.getX());
+                        elementOutput.putInt("RelY", blockPos.getY());
+                        elementOutput.putInt("RelZ", blockPos.getZ());
+                    });
+                }
+            }
         }
     }
 

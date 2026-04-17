@@ -3,7 +3,7 @@ package com.evandev.connectiblechains.tag;
 import com.evandev.connectiblechains.util.MathHelper;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -13,7 +13,7 @@ public class ModTagRegistry {
     public static final TagKey<Item> CATENARY_ITEMS = makeTag(Registries.ITEM, MathHelper.identifier("catenary_items"));
     public static final TagKey<Item> ROPES = makeTag(Registries.ITEM, MathHelper.identifier("ropes"));
 
-    public static <T> TagKey<T> makeTag(ResourceKey<? extends net.minecraft.core.Registry<T>> registry, ResourceLocation id) {
+    public static <T> TagKey<T> makeTag(ResourceKey<? extends net.minecraft.core.Registry<T>> registry, Identifier id) {
         return TagKey.create(registry, id);
     }
 }

@@ -3,8 +3,8 @@ package com.evandev.connectiblechains.client.render.entity.model;
 import com.evandev.connectiblechains.CommonClass;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.util.Mth;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -22,21 +22,26 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions) 
     public void render(VertexConsumer buffer, PoseStack matrices, int bLight0, int bLight1, int sLight0, int sLight1) {
         Matrix4f modelMatrix = matrices.last().pose();
         int count = vertices.length / 3;
+
         for (int i = 0; i < count; i++) {
             float f = lightFractions[i];
             int blockLight = (int) Mth.lerp(f, (float) bLight0, (float) bLight1);
             int skyLight = (int) Mth.lerp(f, (float) sLight0, (float) sLight1);
-            int light = LightTexture.pack(blockLight, skyLight);
+            int light = LightCoordsUtil.pack(blockLight, skyLight);
+
             Vector4f pos = new Vector4f(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2], 1.0F);
             pos.mul(modelMatrix);
 
-            buffer
-                    .addVertex(pos.x, pos.y, pos.z)
+            buffer.addVertex(pos.x, pos.y, pos.z)
                     .setColor(0.8f, 0.8f, 0.8f, 1f)
                     .setUv(uvs[i * 2], uvs[i * 2 + 1])
                     .setOverlay(OverlayTexture.NO_OVERLAY)
                     .setLight(light)
                     .setNormal(1, 1, 1);
+
+            if (CommonClass.runtimeConfig.doDebugDraw()) {
+                buffer.setLineWidth(1.0f);
+            }
         }
     }
 

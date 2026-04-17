@@ -11,7 +11,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -20,13 +20,13 @@ import java.util.function.Function;
 public class FabricNetworkHelper implements INetworkHelper {
 
     public static void init() {
-        PayloadTypeRegistry.playS2C().register(ChainAttachS2CPacket.TYPE, ChainAttachS2CPacket.STREAM_CODEC);
-        PayloadTypeRegistry.playS2C().register(ConfigSyncPayload.TYPE, ConfigSyncPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playS2C().register(ChainSlackSyncS2CPacket.TYPE, ChainSlackSyncS2CPacket.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(ChainAttachS2CPacket.TYPE, ChainAttachS2CPacket.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(ConfigSyncPayload.TYPE, ConfigSyncPayload.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(ChainSlackSyncS2CPacket.TYPE, ChainSlackSyncS2CPacket.STREAM_CODEC);
     }
 
     @Override
-    public <T> void registerClientReceiver(Class<T> type, ResourceLocation id, Function<RegistryFriendlyByteBuf, T> decoder) {
+    public <T> void registerClientReceiver(Class<T> type, Identifier id, Function<RegistryFriendlyByteBuf, T> decoder) {
         if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
             FabricClientNetworkHelper.registerClientReceiver(type);
         }

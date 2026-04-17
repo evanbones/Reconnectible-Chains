@@ -6,7 +6,6 @@ import com.evandev.connectiblechains.entity.Chainable;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.evandev.connectiblechains.util.ChainRaycastHelper;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -59,7 +58,7 @@ public class ChainItemCallbacks {
 
                 if (level instanceof ServerLevel serverWorld) {
                     ChainKnotEntity knot = existingKnot != null ? existingKnot : ChainKnotEntity.getOrCreate(serverWorld, blockPos, stack.getItem(), knotDir);
-                    return knot.interact(player, hand);
+                    return knot.interact(player, hand, hitResult.getLocation());
                 }
                 return InteractionResult.SUCCESS;
             }
@@ -171,11 +170,7 @@ public class ChainItemCallbacks {
     public static void infoToolTip(ItemStack itemStack, Item.TooltipContext context, TooltipFlag tooltipFlag, List<Component> texts) {
         if (CommonClass.runtimeConfig.doShowToolTip()) {
             if (itemStack.is(ModTagRegistry.CATENARY_ITEMS)) {
-                if (Screen.hasShiftDown()) {
-                    texts.add(1, Component.translatable("message.connectiblechains.connectible_chain_detailed").withStyle(ChatFormatting.AQUA));
-                } else {
-                    texts.add(1, Component.translatable("message.connectiblechains.connectible_chain").withStyle(ChatFormatting.YELLOW));
-                }
+                texts.add(1, Component.translatable("message.connectiblechains.connectible_chain_detailed").withStyle(ChatFormatting.AQUA));
             }
         }
     }

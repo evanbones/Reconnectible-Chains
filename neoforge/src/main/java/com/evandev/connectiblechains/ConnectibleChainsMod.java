@@ -23,7 +23,7 @@ public class ConnectibleChainsMod {
     public ConnectibleChainsMod(IEventBus modBus, ModContainer modContainer) {
         NeoForgeRegistryHelper.ENTITIES.register(modBus);
 
-        if (FMLEnvironment.dist == Dist.CLIENT) {
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
             ClientConfigSetup.register(modContainer);
         }
 

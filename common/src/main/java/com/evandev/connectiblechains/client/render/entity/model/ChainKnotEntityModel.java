@@ -1,22 +1,14 @@
 package com.evandev.connectiblechains.client.render.entity.model;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.evandev.connectiblechains.client.render.entity.state.ChainKnotEntityRenderState;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.*;
-import net.minecraft.world.entity.Entity;
-import org.jetbrains.annotations.NotNull;
 
-public class ChainKnotEntityModel<T extends Entity> extends EntityModel<T> {
-    private static final String KNOT = "knot";
-    private final ModelPart root;
-    private final ModelPart knot;
-
+public class ChainKnotEntityModel extends EntityModel<ChainKnotEntityRenderState> {
     public ChainKnotEntityModel(ModelPart root) {
-        this.root = root;
-        this.knot = root.getChild(KNOT);
+        super(root);
     }
 
     public static LayerDefinition getTexturedModelData() {
@@ -34,13 +26,6 @@ public class ChainKnotEntityModel<T extends Entity> extends EntityModel<T> {
     }
 
     @Override
-    public void setupAnim(@NotNull T entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
-        this.knot.yRot = netHeadYaw * (float) (Math.PI / 180.0);
-        this.knot.xRot = headPitch * (float) (Math.PI / 180.0);
-    }
-
-    @Override
-    public void renderToBuffer(@NotNull PoseStack poseStack, @NotNull VertexConsumer buffer, int packedLight, int packedOverlay, int color) {
-        this.root.render(poseStack, buffer, packedLight, packedOverlay, color);
+    public void setupAnim(ChainKnotEntityRenderState state) {
     }
 }

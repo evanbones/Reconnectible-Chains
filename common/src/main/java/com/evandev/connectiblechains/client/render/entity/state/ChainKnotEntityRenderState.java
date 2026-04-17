@@ -1,13 +1,17 @@
 package com.evandev.connectiblechains.client.render.entity.state;
 
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.core.Direction;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.HashSet;
 
-public class ChainKnotEntityRenderState {
+public class ChainKnotEntityRenderState extends EntityRenderState {
     public HashSet<ChainData> chainDataSet = new HashSet<>();
     public Item sourceItem;
+    public Direction attachedFace = Direction.UP;
+    public float scaleXZ = 1.0f;
 
     public static class ChainData {
         public boolean useBaked;

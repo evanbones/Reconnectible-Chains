@@ -7,7 +7,7 @@ import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
 import com.evandev.connectiblechains.platform.services.INetworkHelper;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -47,7 +47,7 @@ public class NeoForgeNetworkHelper implements INetworkHelper {
     }
 
     @Override
-    public <T> void registerClientReceiver(Class<T> type, ResourceLocation id, Function<RegistryFriendlyByteBuf, T> decoder) {
+    public <T> void registerClientReceiver(Class<T> type, Identifier id, Function<RegistryFriendlyByteBuf, T> decoder) {
     }
 
     @Override

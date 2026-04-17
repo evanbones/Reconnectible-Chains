@@ -3,7 +3,7 @@ package com.evandev.connectiblechains.client.render.entity.catenary;
 import com.evandev.connectiblechains.client.render.entity.model.ChainModel;
 import com.evandev.connectiblechains.client.render.entity.UVRect;
 import com.mojang.datafixers.util.Pair;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.joml.Vector3f;
 
 import java.util.HashMap;
@@ -14,7 +14,7 @@ public abstract class CatenaryRenderer {
     protected static final float CHAIN_SCALE = 1f;
     protected static final int MAX_SEGMENTS = 2048;
 
-    private static final HashMap<ResourceLocation, BiFunction<UVRect, UVRect, CatenaryRenderer>> renderers = new HashMap<>();
+    private static final HashMap<Identifier, BiFunction<UVRect, UVRect, CatenaryRenderer>> renderers = new HashMap<>();
     protected final UVRect SIDE_A;
     protected final UVRect SIDE_B;
 
@@ -23,11 +23,11 @@ public abstract class CatenaryRenderer {
         SIDE_B = b;
     }
 
-    public static void addRenderer(ResourceLocation id, BiFunction<UVRect, UVRect, CatenaryRenderer> rendererSupplier) {
+    public static void addRenderer(Identifier id, BiFunction<UVRect, UVRect, CatenaryRenderer> rendererSupplier) {
         renderers.put(id, rendererSupplier);
     }
 
-    public static CatenaryRenderer getRenderer(ResourceLocation id, Pair<UVRect, UVRect> uvRects) {
+    public static CatenaryRenderer getRenderer(Identifier id, Pair<UVRect, UVRect> uvRects) {
         return renderers.getOrDefault(id, CrossCatenaryRenderer::new).apply(uvRects.getFirst(), uvRects.getSecond());
     }
 

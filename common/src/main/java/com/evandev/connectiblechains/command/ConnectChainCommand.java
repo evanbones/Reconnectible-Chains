@@ -11,13 +11,14 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.item.Items;
 
 public class ConnectChainCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("connectchain")
-                .requires(source -> source.hasPermission(2))
+                .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                 .then(Commands.argument("pos1", BlockPosArgument.blockPos())
                         .then(Commands.argument("dir1", StringArgumentType.word())
                                 .then(Commands.argument("pos2", BlockPosArgument.blockPos())
@@ -33,15 +34,15 @@ public class ConnectChainCommand {
 
                                                     ServerLevel level = context.getSource().getLevel();
 
-                                                    ChainKnotEntity knot1 = ChainKnotEntity.getOrCreate(level, pos1, Items.CHAIN, dir1);
-                                                    ChainKnotEntity knot2 = ChainKnotEntity.getOrCreate(level, pos2, Items.CHAIN, dir2);
+                                                    ChainKnotEntity knot1 = ChainKnotEntity.getOrCreate(level, pos1, Items.IRON_CHAIN, dir1);
+                                                    ChainKnotEntity knot2 = ChainKnotEntity.getOrCreate(level, pos2, Items.IRON_CHAIN, dir2);
 
                                                     if (knot1.equals(knot2)) {
                                                         context.getSource().sendFailure(Component.literal("Cannot connect a chain to the same block."));
                                                         return 0;
                                                     }
 
-                                                    knot1.attachChain(new Chainable.ChainData(knot2, Items.CHAIN), null, true);
+                                                    knot1.attachChain(new Chainable.ChainData(knot2, Items.IRON_CHAIN), null, true);
 
                                                     context.getSource().sendSuccess(() -> Component.literal(
                                                             "Successfully connected chain from " + pos1.toShortString() + " (" + dir1.getName() + ") to " + pos2.toShortString() + " (" + dir2.getName() + ")"

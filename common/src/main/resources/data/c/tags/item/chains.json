@@ -1,7 +1,7 @@
 {
   "replace": false,
   "values": [
-    "minecraft:chain",
+    "minecraft:iron_chain",
     {
       "id": "mcwlights:copper_chain",
       "required": false

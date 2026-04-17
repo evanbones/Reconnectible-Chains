@@ -7,7 +7,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -17,7 +17,7 @@ import org.jetbrains.annotations.Nullable;
 public record ChainAttachS2CPacket(int attachedEntityId, int oldHoldingEntityId, int newHoldingEntityId,
                                    int chainTypeId) implements CustomPacketPayload {
 
-    public static final CustomPacketPayload.Type<ChainAttachS2CPacket> TYPE = new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(CommonClass.MODID, "s2c_chain_attach_packet_id"));
+    public static final CustomPacketPayload.Type<ChainAttachS2CPacket> TYPE = new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(CommonClass.MODID, "s2c_chain_attach_packet_id"));
 
     public static final StreamCodec<ByteBuf, ChainAttachS2CPacket> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.INT, ChainAttachS2CPacket::attachedEntityId,

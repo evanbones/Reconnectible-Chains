@@ -1,12 +1,10 @@
 package com.evandev.connectiblechains.platform;
 
 import com.evandev.connectiblechains.platform.services.IPlatformHelper;
-
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.fml.loading.FMLPaths;
-
 
 import java.nio.file.Path;
 
@@ -24,7 +22,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
 
     @Override
     public boolean isDevelopmentEnvironment() {
-        return !FMLLoader.isProduction();
+        return !FMLLoader.getCurrent().isProduction();
     }
 
     @Override
@@ -34,6 +32,6 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
 
     @Override
     public boolean isPhysicalClient() {
-        return FMLLoader.getDist() == Dist.CLIENT;
+        return FMLLoader.getCurrent().getDist() == Dist.CLIENT;
     }
 }

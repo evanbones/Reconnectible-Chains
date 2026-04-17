@@ -11,7 +11,7 @@ import net.minecraft.world.item.Items;
 
 public interface ChainLinkEntity {
     private static <E extends Entity & ChainLinkEntity> InteractionResult onDamageFrom(E self, DamageSource source, SoundEvent hitSound) {
-        if (self.level().isClientSide) {
+        if (self.level().isClientSide()) {
             return InteractionResult.PASS;
         }
         if (self.isInvulnerable()) {

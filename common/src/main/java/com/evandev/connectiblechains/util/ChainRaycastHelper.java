@@ -35,7 +35,7 @@ public class ChainRaycastHelper {
 
         ChainHitResult hit = hitOpt.get();
 
-        if (player.level().isClientSide) return true;
+        if (player.level().isClientSide()) return true;
 
         Chainable.ChainData link = hit.chainData();
         Entity chainedEntity = hit.chainedEntity();
@@ -104,7 +104,7 @@ public class ChainRaycastHelper {
                 if (chainHolder instanceof ChainKnotEntity knot) {
                     dstPos = knot.getChainPos(1.0f);
                 } else {
-                    dstPos = chainHolder.getLeashOffset(1.0f).add(chainHolder.position());
+                    dstPos = chainHolder.getRopeHoldPosition(1.0f);
                 }
 
                 double distance = srcPos.distanceTo(dstPos);
@@ -153,7 +153,7 @@ public class ChainRaycastHelper {
         Optional<ChainHitResult> hitOpt = raycastChains(player, reachDistance);
         if (hitOpt.isEmpty()) return false;
 
-        if (player.level().isClientSide) return true;
+        if (player.level().isClientSide()) return true;
 
         ChainHitResult hit = hitOpt.get();
         Chainable.ChainData link = hit.chainData();

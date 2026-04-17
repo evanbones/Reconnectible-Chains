@@ -1,14 +1,14 @@
 package com.evandev.connectiblechains.util;
 
 import com.evandev.connectiblechains.CommonClass;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
 public class MathHelper {
 
-    public static ResourceLocation identifier(String name) {
-        return ResourceLocation.fromNamespaceAndPath(CommonClass.MODID, name);
+    public static Identifier identifier(String name) {
+        return Identifier.fromNamespaceAndPath(CommonClass.MODID, name);
     }
 
     @Deprecated

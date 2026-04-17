@@ -7,11 +7,9 @@ import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.evandev.connectiblechains.util.ChainTracker;
-import com.evandev.connectiblechains.util.MathHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
@@ -31,10 +29,13 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 
 import java.util.HashSet;
 import java.util.List;
@@ -47,7 +48,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
     public ChainKnotEntity(EntityType<ChainKnotEntity> entityType, Level level) {
         super(entityType, level);
-        sourceItem = Items.CHAIN;
+        sourceItem = Items.IRON_CHAIN;
     }
 
     public ChainKnotEntity(Level level, BlockPos pos, @NotNull Item sourceItem, Direction face) {
@@ -98,14 +99,15 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
-    protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
+    protected void defineSynchedData(SynchedEntityData.@NonNull Builder builder) {
+        super.defineSynchedData(builder);
     }
 
     @Override
     public void tick() {
-        if (!this.level().isClientSide && !this.survives()) {
+        if (!this.level().isClientSide() && !this.survives()) {
             this.discard();
-            this.dropItem(null);
+            this.dropItem((ServerLevel) this.level(), null);
         }
         super.tick();
 
@@ -118,7 +120,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
     @Override
     public void remove(@NotNull RemovalReason reason) {
-        if (!this.level().isClientSide) {
+        if (!this.level().isClientSide()) {
             this.detachAllChains();
         }
 
@@ -128,7 +130,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
-    public @NotNull InteractionResult interact(Player player, @NotNull InteractionHand hand) {
+    public @NotNull InteractionResult interact(Player player, @NotNull InteractionHand hand, @NonNull Vec3 location) {
         ItemStack handStack = player.getItemInHand(hand);
         if (level().isClientSide()) {
             ChainData chainDataForPlayer = getChainData(player);
@@ -193,7 +195,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
                 if (player.isCreative()) detachAllChainsWithoutDrop();
                 else detachAllChains();
                 this.remove(RemovalReason.DISCARDED);
-                this.dropItem(player);
+                this.dropItem((ServerLevel) this.level(), player);
                 return InteractionResult.SUCCESS;
             }
         }
@@ -207,19 +209,17 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
-    public void addAdditionalSaveData(@NotNull CompoundTag nbt) {
-        super.addAdditionalSaveData(nbt);
-        this.writeChainDataSetToNbt(nbt, this.chainDataSet);
-        nbt.putInt("AttachedFace", this.attachedFace.get3DDataValue());
+    public void addAdditionalSaveData(@NotNull ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        this.writeChainDataSetToNbt(output, this.chainDataSet);
+        output.putInt("AttachedFace", this.attachedFace.get3DDataValue());
     }
 
     @Override
-    public void readAdditionalSaveData(@NotNull CompoundTag nbt) {
-        super.readAdditionalSaveData(nbt);
-        this.readChainDataFromNbt(nbt);
-        if (nbt.contains("AttachedFace")) {
-            this.attachedFace = Direction.from3DDataValue(nbt.getInt("AttachedFace"));
-        }
+    public void readAdditionalSaveData(@NotNull ValueInput input) {
+        super.readAdditionalSaveData(input);
+        this.readChainDataFromNbt(input);
+        input.getInt("AttachedFace").ifPresent(val -> this.attachedFace = Direction.from3DDataValue(val));
     }
 
     @Override
@@ -227,7 +227,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         double maxRange = Chainable.getMaxChainLength();
         double effectiveRange = maxRange + 64.0;
 
-        double d = this.getBoundingBoxForCulling().getSize();
+        double d = this.getBoundingBox().getSize();
         if (Double.isNaN(d)) {
             d = 1.0D;
         }
@@ -238,25 +238,6 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         }
 
         return distance < d * d || super.shouldRenderAtSqrDistance(distance);
-    }
-
-    @Override
-    public @NotNull AABB getBoundingBoxForCulling() {
-        AABB result = super.getBoundingBoxForCulling();
-        for (ChainData chainData : new HashSet<>(this.getChainDataSet())) {
-            Entity entity = this.getChainHolder(chainData);
-            if (entity == null) continue;
-
-            result = result.minmax(entity.getBoundingBox());
-
-            double distance = this.position().distanceTo(entity.position());
-            double dy = entity.getY() - this.getY();
-            double sag = Math.abs(MathHelper.drip2(distance / 2.0, distance, dy, chainData.getSlack()));
-
-            double minY = Math.min(this.getY(), entity.getY()) - sag - 1.0;
-            result = result.minmax(new AABB(this.getX(), minY, this.getZ(), this.getX(), minY, this.getZ()));
-        }
-        return result.inflate(1.0);
     }
 
     @Override
@@ -304,7 +285,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
-    public void dropItem(@Nullable Entity breaker) {
+    public void dropItem(@NonNull ServerLevel level, @Nullable Entity breaker) {
         this.playSound(getSourceBlockSoundGroup().getBreakSound(), 1.0F, 1.0F);
     }
 
