@@ -2,6 +2,7 @@ package com.evandev.connectiblechains.entity;
 
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
+import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
@@ -17,9 +18,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.HangingEntity;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.*;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SoundType;
@@ -70,6 +69,15 @@ public interface Chainable {
 
                 if (newChainData != null) {
                     if (compound.contains("Slack")) newChainData.customSlack = compound.getFloat("Slack");
+                    if (compound.contains("Buntings", Tag.TAG_LIST)) {
+                        ListTag buntingList = compound.getList("Buntings", Tag.TAG_COMPOUND);
+                        for (Tag bTag : buntingList) {
+                            if (!(bTag instanceof CompoundTag buntingTag)) continue;
+                            DyeColor color = DyeColor.byName(buntingTag.getString("Color"), null);
+                            if (color != null)
+                                newChainData.buntings.add(new ChainData.BuntingEntry(buntingTag.getFloat("T"), color));
+                        }
+                    }
                     result.add(newChainData);
                 }
             }
@@ -90,6 +98,7 @@ public interface Chainable {
                     if (chainHolder != null) {
                         ChainData newChainData = new ChainData(chainHolder, chainData.sourceItem);
                         newChainData.customSlack = chainData.customSlack;
+                        newChainData.buntings.addAll(chainData.buntings);
                         entity.replaceChainData(chainData, null);
                         attachChain(entity, newChainData, null, true);
                     }
@@ -104,6 +113,7 @@ public interface Chainable {
                     if (chainHolder != null) {
                         ChainData newChainData = new ChainData(chainHolder, chainData.sourceItem);
                         newChainData.customSlack = chainData.customSlack;
+                        newChainData.buntings.addAll(chainData.buntings);
                         entity.replaceChainData(chainData, null);
                         attachChain(entity, newChainData, null, true);
                     }
@@ -122,6 +132,12 @@ public interface Chainable {
             if (entity.level() instanceof ServerLevel serverWorld) {
                 if (dropItem) {
                     entity.spawnAtLocation(chainData.sourceItem);
+                    for (ChainData.BuntingEntry entry : chainData.buntings) {
+                        Item buntingItem = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("supplementaries", "bunting_" + entry.color().getName()));
+                        if (buntingItem != Items.AIR) {
+                            entity.spawnAtLocation(buntingItem);
+                        }
+                    }
                 }
 
                 if (sendPacket) {
@@ -163,6 +179,9 @@ public interface Chainable {
             Services.NETWORK.sendToAllClients(serverLevel.getServer(), new ChainAttachS2CPacket(entity, previousHolder, chainData.chainHolder, chainData.sourceItem));
             if (chainData.customSlack >= 0) {
                 Services.NETWORK.sendToAllClients(serverLevel.getServer(), new ChainSlackSyncS2CPacket(entity.getId(), chainData.chainHolder.getId(), chainData.customSlack));
+            }
+            if (!chainData.buntings.isEmpty()) {
+                Services.NETWORK.sendToAllClients(serverLevel.getServer(), new BuntingSyncS2CPacket(entity.getId(), chainData.chainHolder.getId(), new ArrayList<>(chainData.buntings)));
             }
             if (chainData.chainHolder instanceof Chainable) {
                 ChainCollisionEntity.createCollision(entity, chainData);
@@ -284,6 +303,16 @@ public interface Chainable {
                     nbtCompound.putUUID("UUID", uuid);
                     nbtCompound.putString(SOURCE_ITEM_KEY, sourceItem);
                     nbtCompound.putFloat("Slack", chainData.customSlack);
+                    if (!chainData.buntings.isEmpty()) {
+                        ListTag buntingList = new ListTag();
+                        for (ChainData.BuntingEntry entry : chainData.buntings) {
+                            CompoundTag bt = new CompoundTag();
+                            bt.putFloat("T", entry.t());
+                            bt.putString("Color", entry.color().getName());
+                            buntingList.add(bt);
+                        }
+                        nbtCompound.put("Buntings", buntingList);
+                    }
                     return nbtCompound;
                 }, blockPos -> {
                     CompoundTag nbtCompound = new CompoundTag();
@@ -292,6 +321,16 @@ public interface Chainable {
                     nbtCompound.putInt("RelZ", blockPos.getZ());
                     nbtCompound.putString(SOURCE_ITEM_KEY, sourceItem);
                     nbtCompound.putFloat("Slack", chainData.customSlack);
+                    if (!chainData.buntings.isEmpty()) {
+                        ListTag buntingList = new ListTag();
+                        for (ChainData.BuntingEntry entry : chainData.buntings) {
+                            CompoundTag bt = new CompoundTag();
+                            bt.putFloat("T", entry.t());
+                            bt.putString("Color", entry.color().getName());
+                            buntingList.add(bt);
+                        }
+                        nbtCompound.put("Buntings", buntingList);
+                    }
                     return nbtCompound;
                 }));
             }
@@ -372,6 +411,7 @@ public interface Chainable {
         @NotNull
         public final Item sourceItem;
         public final int unresolvedChainHolderId;
+        public final List<BuntingEntry> buntings = new ArrayList<>();
         @Nullable
         private final Entity chainHolder;
         @Nullable
@@ -446,6 +486,9 @@ public interface Chainable {
         @Override
         public String toString() {
             return "ChainData{" + "collisionStorage=" + collisionStorage + ", unresolvedChainData=" + unresolvedChainData + ", sourceItem=" + sourceItem + ", unresolvedChainHolderId=" + unresolvedChainHolderId + ", chainHolder=" + chainHolder + ", customSlack=" + customSlack + '}';
+        }
+
+        public record BuntingEntry(float t, DyeColor color) {
         }
     }
 }

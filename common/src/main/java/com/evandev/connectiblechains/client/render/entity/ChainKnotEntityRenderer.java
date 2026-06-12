@@ -5,12 +5,16 @@ import com.evandev.connectiblechains.client.ClientInitializer;
 import com.evandev.connectiblechains.client.render.entity.catenary.CatenaryRenderer;
 import com.evandev.connectiblechains.client.render.entity.model.ChainKnotEntityModel;
 import com.evandev.connectiblechains.client.render.entity.state.ChainKnotEntityRenderState;
+import com.evandev.connectiblechains.client.SupplementariesCompat;
 import com.evandev.connectiblechains.client.render.entity.texture.ChainTextureManager;
 import com.evandev.connectiblechains.entity.ChainKnotEntity;
 import com.evandev.connectiblechains.entity.Chainable;
 import com.evandev.connectiblechains.util.ChainTracker;
+import com.evandev.connectiblechains.util.MathHelper;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -21,9 +25,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.HangingEntity;
-import net.minecraft.world.item.Item;
+import net.minecraft.world.item.*;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
@@ -36,6 +41,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 
 public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
@@ -188,7 +194,49 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             chainRenderer.render(renderer, vertexConsumer, matrices, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight);
         }
 
+        if (!chainData.buntings.isEmpty()) {
+            renderBuntingsAlongChain(matrices, vertexConsumerProvider, chainVec, chainData);
+        }
+
         matrices.popPose();
+    }
+
+    private void renderBuntingsAlongChain(PoseStack matrices, MultiBufferSource buffers, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
+        float distanceXZ = (float) Math.sqrt(chainVec.x() * chainVec.x() + chainVec.z() * chainVec.z());
+        if (distanceXZ < 0.1f) return;
+
+        float distance = chainVec.length();
+        float wrongDistanceFactor = distance / distanceXZ;
+        float slack = chainData.slack;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        long gameTime = mc.level.getGameTime();
+
+        for (Chainable.ChainData.BuntingEntry entry : chainData.buntings) {
+            float t = entry.t();
+            float x = t * distanceXZ;
+            float y = (float) MathHelper.drip2(x * wrongDistanceFactor, distance, chainVec.y(), slack);
+
+            float slope = (float) (MathHelper.drip2prime(x * wrongDistanceFactor, distance, chainVec.y(), slack) * wrongDistanceFactor);
+            float pitchRad = (float) Math.atan2(slope, 1.0);
+
+            int blockLight = (int) Mth.lerp(t, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight);
+            int skyLight = (int) Mth.lerp(t, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight);
+            int light = LightTexture.pack(blockLight, skyLight);
+
+            ResourceLocation itemId = ResourceLocation.fromNamespaceAndPath("supplementaries", "bunting_" + entry.color().getName());
+            if (BuiltInRegistries.ITEM.get(itemId) == Items.AIR) continue;
+
+            BlockPos buntingBlockPos = BlockPos.containing(chainData.startPos.lerp(chainData.endPos, t));
+
+            matrices.pushPose();
+            matrices.translate(x, y, 0);
+            matrices.mulPose(new Quaternionf().rotateZ(pitchRad));
+            matrices.translate(0.25f, -0.19f, 0.0f);
+            SupplementariesCompat.renderBunting(entry.color(), matrices, buffers, light, buntingBlockPos, gameTime);
+            matrices.popPose();
+        }
     }
 
     private void drawDebugVector(PoseStack matrices, Vec3 startPos, Vec3 endPos, VertexConsumer buffer) {
@@ -240,6 +288,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             renderChainData.sourceItem = chainData.sourceItem;
             renderChainData.useBaked = chainHolder instanceof HangingEntity;
             renderChainData.slack = chainData.getSlack();
+            renderChainData.buntings = new ArrayList<>(chainData.buntings);
             result.add(renderChainData);
         }
 
@@ -265,6 +314,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
                 renderChainData.sourceItem = incomingLink.sourceItem;
                 renderChainData.useBaked = otherEntity instanceof HangingEntity;
                 renderChainData.slack = incomingLink.getSlack();
+                renderChainData.buntings = new ArrayList<>(incomingLink.buntings);
                 result.add(renderChainData);
             }
         }

@@ -3,21 +3,143 @@ package com.evandev.connectiblechains.util;
 import com.evandev.connectiblechains.entity.ChainCollisionEntity;
 import com.evandev.connectiblechains.entity.ChainKnotEntity;
 import com.evandev.connectiblechains.entity.Chainable;
+import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
+import com.evandev.connectiblechains.tag.ModTagRegistry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Optional;
 
 public class ChainRaycastHelper {
+
+    /**
+     * Attempts to place a bunting on a looked-at rope chain.
+     *
+     * @return true if a rope chain was found and interacted with.
+     */
+    public static boolean tryPlaceBunting(Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (!stack.is(ModTagRegistry.BUNTING_ITEMS)) return false;
+
+        double reach = player.isCreative() ? 5.0 : 4.5;
+        Optional<ChainHitResult> hitOpt = raycastChains(player, reach);
+        if (hitOpt.isEmpty()) return false;
+
+        ChainHitResult hit = hitOpt.get();
+        if (!new ItemStack(hit.chainData().sourceItem).is(ModTagRegistry.ROPES)) return false;
+
+        Entity chainedEntity = hit.chainedEntity();
+        if (!(chainedEntity instanceof Chainable chainable)) return false;
+        Entity holder = chainable.getChainHolder(hit.chainData());
+        if (!(holder instanceof ChainKnotEntity holderKnot)) return false;
+
+        float t = hit.t();
+        Vec3 srcPos = chainable.getChainPos(1.0f);
+        Vec3 dstPos = holderKnot.getChainPos(1.0f);
+        float chainLength = (float) srcPos.distanceTo(dstPos);
+        float minTSpacing = chainLength > 0 ? 0.5f / chainLength : 1.0f;
+
+        Chainable.ChainData link = hit.chainData();
+        for (Chainable.ChainData.BuntingEntry entry : link.buntings) {
+            if (Math.abs(entry.t() - t) < minTSpacing) return false;
+        }
+
+        if (player.level().isClientSide) return true;
+
+        DyeColor color = getBuntingColor(stack.getItem());
+        if (color == null) return true;
+
+        link.buntings.add(new Chainable.ChainData.BuntingEntry(t, color));
+        link.buntings.sort(Comparator.comparingDouble(Chainable.ChainData.BuntingEntry::t));
+        if (!player.isCreative()) stack.shrink(1);
+
+        sendBuntingSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
+        return true;
+    }
+
+    /**
+     * Attempts to remove a bunting from a looked-at rope chain using shears.
+     * Returns false if there is no bunting near the look point, allowing slack adjustment to proceed.
+     *
+     * @return true if a bunting was found and removed.
+     */
+    public static boolean tryRemoveBunting(Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (!stack.is(Items.SHEARS)) return false;
+
+        double reach = player.isCreative() ? 5.0 : 4.5;
+        Optional<ChainHitResult> hitOpt = raycastChains(player, reach);
+        if (hitOpt.isEmpty()) return false;
+
+        ChainHitResult hit = hitOpt.get();
+        if (!new ItemStack(hit.chainData().sourceItem).is(ModTagRegistry.ROPES)) return false;
+
+        Entity chainedEntity = hit.chainedEntity();
+        if (!(chainedEntity instanceof Chainable chainable)) return false;
+        Entity holder = chainable.getChainHolder(hit.chainData());
+        if (!(holder instanceof ChainKnotEntity holderKnot)) return false;
+
+        float t = hit.t();
+        Chainable.ChainData link = hit.chainData();
+        if (link.buntings.isEmpty()) return false;
+
+        // Find the nearest bunting to the click point
+        Vec3 srcPos = chainable.getChainPos(1.0f);
+        Vec3 dstPos = holderKnot.getChainPos(1.0f);
+        float chainLength = (float) srcPos.distanceTo(dstPos);
+
+        Chainable.ChainData.BuntingEntry nearest = null;
+        float nearestDist = Float.MAX_VALUE;
+        for (Chainable.ChainData.BuntingEntry entry : link.buntings) {
+            float dist = Math.abs(entry.t() - t);
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearest = entry;
+            }
+        }
+
+        if (nearest == null || nearestDist * chainLength > 1.5f) return false;
+
+        if (player.level().isClientSide) return true;
+
+        link.buntings.remove(nearest);
+        if (!player.isCreative()) {
+            Item buntingItem = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("supplementaries", "bunting_" + nearest.color().getName()));
+            if (buntingItem != Items.AIR) {
+                player.getInventory().add(new ItemStack(buntingItem));
+            }
+        }
+
+        sendBuntingSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
+        return true;
+    }
+
+    private static void sendBuntingSync(Entity chainedEntity, ChainKnotEntity holder, Chainable.ChainData link, ServerLevel level) {
+        Services.NETWORK.sendToAllClients(level.getServer(), new BuntingSyncS2CPacket(chainedEntity.getId(), holder.getId(), new ArrayList<>(link.buntings)));
+    }
+
+    public static DyeColor getBuntingColor(Item item) {
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
+        if (id == null) return null;
+        String path = id.getPath();
+        if (!path.startsWith("bunting_")) return null;
+        return DyeColor.byName(path.substring("bunting_".length()), null);
+    }
 
     /**
      * Attempts to adjust the slack of a looked-at chain.
@@ -119,19 +241,22 @@ public class ChainRaycastHelper {
                 Vec3 lastPoint = srcPos.add(0, -0.125, 0);
 
                 for (int i = 1; i <= segments; i++) {
-                    double t = (double) i / segments;
-                    double x = Mth.lerp(t, srcPos.x(), dstPos.x());
-                    double y = srcPos.y() + MathHelper.drip2((t * distance), distance, dstPos.y() - srcPos.y(), chainData.getSlack()) - 0.125;
-                    double z = Mth.lerp(t, srcPos.z(), dstPos.z());
+                    double tSeg = (double) i / segments;
+                    double x = Mth.lerp(tSeg, srcPos.x(), dstPos.x());
+                    double y = srcPos.y() + MathHelper.drip2((tSeg * distance), distance, dstPos.y() - srcPos.y(), chainData.getSlack()) - 0.125;
+                    double z = Mth.lerp(tSeg, srcPos.z(), dstPos.z());
                     Vec3 currentPoint = new Vec3(x, y, z);
 
-                    double distToRay = distanceRaySegment(rayOrigin, rayDir, lastPoint, currentPoint, reach);
+                    double[] rayResult = distanceRaySegmentEx(rayOrigin, rayDir, lastPoint, currentPoint, reach);
+                    double distToRay = rayResult[0];
+                    double tc = rayResult[1];
 
                     if (distToRay < 0.25) {
                         double distanceToPlayer = rayOrigin.distanceTo(currentPoint);
                         if (distanceToPlayer < closestDistance) {
                             closestDistance = distanceToPlayer;
-                            bestHit = new ChainHitResult(entity, chainData, distanceToPlayer);
+                            float hitT = (float) ((i - 1 + tc) / segments);
+                            bestHit = new ChainHitResult(entity, chainData, distanceToPlayer, hitT);
                         }
                     }
                     lastPoint = currentPoint;
@@ -173,6 +298,13 @@ public class ChainRaycastHelper {
      * Calculates the shortest distance between a Ray and a 3D Line Segment.
      */
     private static double distanceRaySegment(Vec3 rayOrigin, Vec3 rayDir, Vec3 p0, Vec3 p1, double maxReach) {
+        return distanceRaySegmentEx(rayOrigin, rayDir, p0, p1, maxReach)[0];
+    }
+
+    /**
+     * Returns [distance, tc] where tc is the segment parameter [0, 1] at the closest point.
+     */
+    private static double[] distanceRaySegmentEx(Vec3 rayOrigin, Vec3 rayDir, Vec3 p0, Vec3 p1, double maxReach) {
         Vec3 u = rayDir;
         Vec3 v = p1.subtract(p0);
         Vec3 w = rayOrigin.subtract(p0);
@@ -202,11 +334,11 @@ public class ChainRaycastHelper {
             sc = (b - d) / a;
         }
 
-        if (sc < 0.0 || sc > maxReach) return Double.MAX_VALUE;
+        if (sc < 0.0 || sc > maxReach) return new double[]{Double.MAX_VALUE, tc};
         Vec3 dP = w.add(u.scale(sc)).subtract(v.scale(tc));
-        return dP.length();
+        return new double[]{dP.length(), tc};
     }
 
-    public record ChainHitResult(Entity chainedEntity, Chainable.ChainData chainData, double hitDistance) {
+    public record ChainHitResult(Entity chainedEntity, Chainable.ChainData chainData, double hitDistance, float t) {
     }
 }

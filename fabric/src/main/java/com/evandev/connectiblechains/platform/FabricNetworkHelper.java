@@ -1,5 +1,6 @@
 package com.evandev.connectiblechains.platform;
 
+import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
@@ -23,6 +24,7 @@ public class FabricNetworkHelper implements INetworkHelper {
         PayloadTypeRegistry.playS2C().register(ChainAttachS2CPacket.TYPE, ChainAttachS2CPacket.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(ConfigSyncPayload.TYPE, ConfigSyncPayload.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(ChainSlackSyncS2CPacket.TYPE, ChainSlackSyncS2CPacket.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(BuntingSyncS2CPacket.TYPE, BuntingSyncS2CPacket.STREAM_CODEC);
     }
 
     @Override

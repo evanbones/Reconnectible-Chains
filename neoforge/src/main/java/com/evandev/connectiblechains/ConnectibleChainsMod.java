@@ -52,6 +52,16 @@ public class ConnectibleChainsMod {
     }
 
     private void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        if (ChainRaycastHelper.tryPlaceBunting(event.getEntity(), event.getHand())) {
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
+            return;
+        }
+        if (ChainRaycastHelper.tryRemoveBunting(event.getEntity(), event.getHand())) {
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
+            return;
+        }
         if (ChainRaycastHelper.tryAdjustSlack(event.getEntity(), event.getHand())) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);

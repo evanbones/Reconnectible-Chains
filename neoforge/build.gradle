@@ -43,6 +43,10 @@ dependencies {
 
     // Cloth Config
     implementation "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}"
+
+    // Supplementaries
+    implementation "maven.modrinth:supplementaries:${supplementaries_version_neoforge}"
+    implementation "maven.modrinth:moonlight:${moonlight_version_neoforge}"
 }
 
 publishMods {

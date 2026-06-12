@@ -12,6 +12,7 @@ public class ModTagRegistry {
     public static final TagKey<Block> CHAIN_CONNECTIBLE = makeTag(Registries.BLOCK, MathHelper.identifier("chain_connectible"));
     public static final TagKey<Item> CATENARY_ITEMS = makeTag(Registries.ITEM, MathHelper.identifier("catenary_items"));
     public static final TagKey<Item> ROPES = makeTag(Registries.ITEM, MathHelper.identifier("ropes"));
+    public static final TagKey<Item> BUNTING_ITEMS = makeTag(Registries.ITEM, MathHelper.identifier("bunting_items"));
 
     public static <T> TagKey<T> makeTag(ResourceKey<? extends net.minecraft.core.Registry<T>> registry, ResourceLocation id) {
         return TagKey.create(registry, id);

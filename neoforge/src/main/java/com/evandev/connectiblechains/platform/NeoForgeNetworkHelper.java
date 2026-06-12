@@ -1,9 +1,6 @@
 package com.evandev.connectiblechains.platform;
 
-import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
-import com.evandev.connectiblechains.networking.packet.ChainBreakC2SPacket;
-import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
-import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
+import com.evandev.connectiblechains.networking.packet.*;
 import com.evandev.connectiblechains.platform.services.INetworkHelper;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -37,6 +34,12 @@ public class NeoForgeNetworkHelper implements INetworkHelper {
                 ChainSlackSyncS2CPacket.TYPE,
                 ChainSlackSyncS2CPacket.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ChainSlackSyncS2CPacket.handle(payload, context.player()))
+        );
+
+        registrar.playToClient(
+                BuntingSyncS2CPacket.TYPE,
+                BuntingSyncS2CPacket.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> BuntingSyncS2CPacket.handle(payload, context.player()))
         );
 
         registrar.playToServer(

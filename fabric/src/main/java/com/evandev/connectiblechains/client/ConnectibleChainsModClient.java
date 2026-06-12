@@ -5,6 +5,7 @@ import com.evandev.connectiblechains.client.render.entity.ChainCollisionEntityRe
 import com.evandev.connectiblechains.client.render.entity.ChainKnotEntityRenderer;
 import com.evandev.connectiblechains.entity.ModEntityTypes;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
+import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
@@ -37,6 +38,7 @@ public class ConnectibleChainsModClient implements ClientModInitializer {
         FabricClientNetworkHelper.registerClientReceiver(ChainAttachS2CPacket.class);
         FabricClientNetworkHelper.registerClientReceiver(ConfigSyncPayload.class);
         FabricClientNetworkHelper.registerClientReceiver(ChainSlackSyncS2CPacket.class);
+        FabricClientNetworkHelper.registerClientReceiver(BuntingSyncS2CPacket.class);
 
         ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new IdentifiableResourceReloadListener() {
             @Override
