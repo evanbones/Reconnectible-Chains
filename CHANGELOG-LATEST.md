@@ -1,12 +1,12 @@
 ### Added
 
-- Added default support for Architect's Palette chains.
+- Supplementaries Buntings can now be placed on any Ropes!
+- Banners can now be placed on ropes.
+- Added default support for Caverns and Chasms chains.
+- Added Vines to the default chain connectible tag.
+- Added support for texture biome tinting.
 
 ### Changed
 
-- Chain collisions are now disabled by default.
-- Increased max length for Chains to 512 for the utterly deranged.
-
-### Fixed
-
-- Fixed more edge-case bugs with chain knot block updates.
+- Pressing shift will now bypass chain/rope knot placement.
+- Tweaked sounds for shearing.
