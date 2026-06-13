@@ -47,6 +47,10 @@ dependencies {
     // Supplementaries
     implementation "maven.modrinth:supplementaries:${supplementaries_version_neoforge}"
     implementation "maven.modrinth:moonlight:${moonlight_version_neoforge}"
+
+    // Caverns and Chasms
+    implementation "maven.modrinth:blueprint:8.1.0"
+    implementation "maven.modrinth:caverns_and_chasms:3.0.0"
 }
 
 publishMods {

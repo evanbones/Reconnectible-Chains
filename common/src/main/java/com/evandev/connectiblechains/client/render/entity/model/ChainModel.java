@@ -19,8 +19,12 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions) 
         return new Builder(initialCapacity);
     }
 
-    public void render(VertexConsumer buffer, PoseStack matrices, int bLight0, int bLight1, int sLight0, int sLight1) {
+    public void render(VertexConsumer buffer, PoseStack matrices, int bLight0, int bLight1, int sLight0, int sLight1, int tintColor) {
         Matrix4f modelMatrix = matrices.last().pose();
+        float r = ((tintColor >> 16) & 0xFF) / 255.0f;
+        float g = ((tintColor >> 8) & 0xFF) / 255.0f;
+        float b = (tintColor & 0xFF) / 255.0f;
+        float a = ((tintColor >> 24) & 0xFF) / 255.0f;
         int count = vertices.length / 3;
         for (int i = 0; i < count; i++) {
             float f = lightFractions[i];
@@ -32,7 +36,7 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions) 
 
             buffer
                     .addVertex(pos.x, pos.y, pos.z)
-                    .setColor(0.8f, 0.8f, 0.8f, 1f)
+                    .setColor(r, g, b, a)
                     .setUv(uvs[i * 2], uvs[i * 2 + 1])
                     .setOverlay(OverlayTexture.NO_OVERLAY)
                     .setLight(light)

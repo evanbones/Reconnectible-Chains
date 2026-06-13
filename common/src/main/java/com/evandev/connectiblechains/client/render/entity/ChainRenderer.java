@@ -21,16 +21,16 @@ public class ChainRenderer {
         }
     };
 
-    public void renderBaked(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack matrices, Vector3f chainVec, float slack, int blockLight0, int blockLight1, int skyLight0, int skyLight1) {
+    public void renderBaked(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack matrices, Vector3f chainVec, float slack, int blockLight0, int blockLight1, int skyLight0, int skyLight1, int tintColor) {
         BakeKey key = new BakeKey(chainVec, renderer, slack);
 
         ChainModel model = models.computeIfAbsent(key, k -> renderer.buildModel(chainVec, slack));
-        model.render(buffer, matrices, blockLight0, blockLight1, skyLight0, skyLight1);
+        model.render(buffer, matrices, blockLight0, blockLight1, skyLight0, skyLight1, tintColor);
     }
 
-    public void render(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack matrices, Vector3f chainVec, float slack, int blockLight0, int blockLight1, int skyLight0, int skyLight1) {
+    public void render(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack matrices, Vector3f chainVec, float slack, int blockLight0, int blockLight1, int skyLight0, int skyLight1, int tintColor) {
         ChainModel model = renderer.buildModel(chainVec, slack);
-        model.render(buffer, matrices, blockLight0, blockLight1, skyLight0, skyLight1);
+        model.render(buffer, matrices, blockLight0, blockLight1, skyLight0, skyLight1, tintColor);
     }
 
     public void purge() {

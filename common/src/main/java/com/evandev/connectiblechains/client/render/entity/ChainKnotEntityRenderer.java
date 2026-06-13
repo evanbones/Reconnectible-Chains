@@ -16,6 +16,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.renderer.BiomeColors;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -157,7 +158,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             matrices.scale(scaleXZ, 1, scaleXZ);
 
             VertexConsumer vertexConsumer = vertexConsumers.getBuffer(this.model.renderType(getKnotTexture(state.sourceItem)));
-            this.model.renderToBuffer(matrices, vertexConsumer, light, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
+            this.model.renderToBuffer(matrices, vertexConsumer, light, OverlayTexture.NO_OVERLAY, state.knotTintColor);
             matrices.popPose();
         }
 
@@ -199,9 +200,9 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
         CatenaryRenderer renderer = getCatenaryRenderer(sourceItem);
 
         if (chainData.useBaked) {
-            chainRenderer.renderBaked(renderer, vertexConsumer, matrices, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight);
+            chainRenderer.renderBaked(renderer, vertexConsumer, matrices, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
         } else {
-            chainRenderer.render(renderer, vertexConsumer, matrices, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight);
+            chainRenderer.render(renderer, vertexConsumer, matrices, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
         }
 
         if (!chainData.buntings.isEmpty()) {
@@ -369,6 +370,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             renderChainData.chainedEntitySkyLight = level.getBrightness(LightLayer.SKY, blockPosOfStart);
             renderChainData.chainHolderSkyLight = level.getBrightness(LightLayer.SKY, blockPosOfEnd);
             renderChainData.sourceItem = chainData.sourceItem;
+            renderChainData.tintColor = computeChainTintColor(level, chainData.sourceItem, srcPos, dstPos);
             renderChainData.useBaked = chainHolder instanceof HangingEntity;
             renderChainData.slack = chainData.getSlack();
             renderChainData.buntings = new ArrayList<>(chainData.buntings);
@@ -396,6 +398,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
                 renderChainData.chainedEntitySkyLight = level.getBrightness(LightLayer.SKY, blockPosOfStart);
                 renderChainData.chainHolderSkyLight = level.getBrightness(LightLayer.SKY, blockPosOfEnd);
                 renderChainData.sourceItem = incomingLink.sourceItem;
+                renderChainData.tintColor = computeChainTintColor(level, incomingLink.sourceItem, srcPos, dstPos);
                 renderChainData.useBaked = otherEntity instanceof HangingEntity;
                 renderChainData.slack = incomingLink.getSlack();
                 renderChainData.buntings = new ArrayList<>(incomingLink.buntings);
@@ -406,6 +409,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
 
         state.chainDataSet = result;
         state.sourceItem = entity.getSourceItem();
+        state.knotTintColor = computeKnotTintColor(level, entity.getSourceItem(), entity.blockPosition());
     }
 
     private ChainTextureManager getTextureManager() {
@@ -423,5 +427,26 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
     private CatenaryRenderer getCatenaryRenderer(Item item) {
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
         return getTextureManager().getCatenaryRenderer(id);
+    }
+
+    private int computeChainTintColor(Level level, Item sourceItem, Vec3 srcPos, Vec3 dstPos) {
+        return getTextureManager().getTint(sourceItem)
+                .map(tint -> 0xFF000000 | sampleBiomeColor(level, tint, BlockPos.containing(srcPos.lerp(dstPos, 0.5))))
+                .orElse(0xFFCCCCCC);
+    }
+
+    private int computeKnotTintColor(Level level, Item sourceItem, BlockPos pos) {
+        return getTextureManager().getTint(sourceItem)
+                .map(tint -> 0xFF000000 | sampleBiomeColor(level, tint, pos))
+                .orElse(0xFFFFFFFF);
+    }
+
+    private int sampleBiomeColor(Level level, String tintType, BlockPos pos) {
+        return switch (tintType) {
+            case "foliage" -> BiomeColors.getAverageFoliageColor(level, pos);
+            case "grass" -> BiomeColors.getAverageGrassColor(level, pos);
+            case "water" -> BiomeColors.getAverageWaterColor(level, pos);
+            default -> 0xCCCCCC;
+        };
     }
 }
