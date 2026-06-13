@@ -14,6 +14,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -82,6 +84,8 @@ public class ChainRaycastHelper {
         if (!player.isCreative()) stack.shrink(1);
 
         sendBuntingSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.WOOL_PLACE, SoundSource.PLAYERS, 1.0f, 0.9f + player.level().random.nextFloat() * 0.2f);
         return true;
     }
 
@@ -161,6 +165,8 @@ public class ChainRaycastHelper {
             }
             sendBannerSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
         }
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.SHEEP_SHEAR, SoundSource.PLAYERS, 0.8f, 0.9f + player.level().random.nextFloat() * 0.2f);
         return true;
     }
 
@@ -223,6 +229,8 @@ public class ChainRaycastHelper {
         if (!player.isCreative()) stack.shrink(1);
 
         sendBannerSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.CHAIN_PLACE, SoundSource.PLAYERS, 1.0f, 0.9f + player.level().random.nextFloat() * 0.2f);
         return true;
     }
 
