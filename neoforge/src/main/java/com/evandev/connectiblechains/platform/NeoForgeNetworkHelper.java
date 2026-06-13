@@ -42,6 +42,12 @@ public class NeoForgeNetworkHelper implements INetworkHelper {
                 (payload, context) -> context.enqueueWork(() -> BuntingSyncS2CPacket.handle(payload, context.player()))
         );
 
+        registrar.playToClient(
+                BannerSyncS2CPacket.TYPE,
+                BannerSyncS2CPacket.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> BannerSyncS2CPacket.handle(payload, context.player()))
+        );
+
         registrar.playToServer(
                 ChainBreakC2SPacket.TYPE,
                 ChainBreakC2SPacket.STREAM_CODEC,

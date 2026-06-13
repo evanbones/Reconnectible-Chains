@@ -1,5 +1,6 @@
 package com.evandev.connectiblechains.platform;
 
+import com.evandev.connectiblechains.networking.packet.BannerSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
@@ -24,6 +25,10 @@ public class FabricClientNetworkHelper {
         } else if (type == BuntingSyncS2CPacket.class) {
             ClientPlayNetworking.registerGlobalReceiver(BuntingSyncS2CPacket.TYPE, (payload, context) -> {
                 context.client().execute(() -> BuntingSyncS2CPacket.handle(payload, context.player()));
+            });
+        } else if (type == BannerSyncS2CPacket.class) {
+            ClientPlayNetworking.registerGlobalReceiver(BannerSyncS2CPacket.TYPE, (payload, context) -> {
+                context.client().execute(() -> BannerSyncS2CPacket.handle(payload, context.player()));
             });
         }
     }

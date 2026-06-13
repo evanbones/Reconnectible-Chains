@@ -2,10 +2,10 @@ package com.evandev.connectiblechains.client.render.entity;
 
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.client.ClientInitializer;
+import com.evandev.connectiblechains.client.SupplementariesCompat;
 import com.evandev.connectiblechains.client.render.entity.catenary.CatenaryRenderer;
 import com.evandev.connectiblechains.client.render.entity.model.ChainKnotEntityModel;
 import com.evandev.connectiblechains.client.render.entity.state.ChainKnotEntityRenderState;
-import com.evandev.connectiblechains.client.SupplementariesCompat;
 import com.evandev.connectiblechains.client.render.entity.texture.ChainTextureManager;
 import com.evandev.connectiblechains.entity.ChainKnotEntity;
 import com.evandev.connectiblechains.entity.Chainable;
@@ -14,23 +14,30 @@ import com.evandev.connectiblechains.util.MathHelper;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.geom.ModelLayers;
+import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.blockentity.BannerRenderer;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.resources.model.ModelBakery;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.HangingEntity;
-import net.minecraft.world.item.*;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.entity.BannerPatternLayers;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -45,6 +52,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
+    private static final ResourceLocation BANNER_CONNECTOR_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(CommonClass.MODID, "textures/block/banner_connector.png");
+
     private final ChainKnotEntityModel<ChainKnotEntity> model;
     private final ChainRenderer chainRenderer = new ChainRenderer();
 
@@ -198,6 +208,10 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             renderBuntingsAlongChain(matrices, vertexConsumerProvider, chainVec, chainData);
         }
 
+        if (!chainData.banners.isEmpty()) {
+            renderBannersAlongChain(matrices, vertexConsumerProvider, chainVec, chainData);
+        }
+
         matrices.popPose();
     }
 
@@ -237,6 +251,74 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             SupplementariesCompat.renderBunting(entry.color(), matrices, buffers, light, buntingBlockPos, gameTime);
             matrices.popPose();
         }
+    }
+
+    private void renderBannersAlongChain(PoseStack matrices, MultiBufferSource buffers, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
+        float distanceXZ = (float) Math.sqrt(chainVec.x() * chainVec.x() + chainVec.z() * chainVec.z());
+        if (distanceXZ < 0.1f) return;
+
+        float distance = chainVec.length();
+        float wrongDistanceFactor = distance / distanceXZ;
+        float slack = chainData.slack;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+
+        ModelPart flag = mc.getEntityModels().bakeLayer(ModelLayers.BANNER).getChild("flag");
+
+        for (Chainable.ChainData.BannerEntry entry : chainData.banners) {
+            float t = entry.t();
+            float x = t * distanceXZ;
+            float y = (float) MathHelper.drip2(x * wrongDistanceFactor, distance, chainVec.y(), slack);
+
+            int blockLight = (int) Mth.lerp(t, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight);
+            int skyLight = (int) Mth.lerp(t, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight);
+            int light = LightTexture.pack(blockLight, skyLight);
+
+            BannerPatternLayers patterns = BannerPatternLayers.EMPTY;
+            if (entry.data().contains("Pattern")) {
+                patterns = BannerPatternLayers.CODEC
+                        .parse(mc.level.registryAccess().createSerializationContext(NbtOps.INSTANCE), entry.data().get("Pattern"))
+                        .result().orElse(BannerPatternLayers.EMPTY);
+            }
+
+            renderBannerConnector(matrices, buffers, light, x, y);
+
+            matrices.pushPose();
+            matrices.translate(x, y, 0);
+            matrices.mulPose(new Quaternionf().rotateX((float) Math.PI));
+            matrices.scale(0.66f, 0.66f, 0.66f);
+
+            matrices.translate(0, 0.375, 0.07);
+            BannerRenderer.renderPatterns(matrices, buffers, light, OverlayTexture.NO_OVERLAY, flag, ModelBakery.BANNER_BASE, true, entry.color(), patterns);
+            matrices.translate(0, 0, -0.07);
+            matrices.mulPose(new Quaternionf().rotateY((float) Math.PI));
+            matrices.translate(0, 0, 0.07);
+            BannerRenderer.renderPatterns(matrices, buffers, light, OverlayTexture.NO_OVERLAY, flag, ModelBakery.BANNER_BASE, true, entry.color(), patterns);
+
+            matrices.popPose();
+        }
+    }
+
+    private void renderBannerConnector(PoseStack matrices, MultiBufferSource buffers, int light, float x, float y) {
+        VertexConsumer vc = buffers.getBuffer(RenderType.entityCutoutNoCull(BANNER_CONNECTOR_TEXTURE));
+        PoseStack.Pose pose = matrices.last();
+        float hw = 6.0f / 16.0f;
+        float h = 6.0f / 16.0f;
+        float u1 = 12.0f / 16.0f;
+        float v1 = 6.0f / 16.0f;
+
+        // Front face
+        vc.addVertex(pose, x - hw, y, 0).setColor(255, 255, 255, 255).setUv(0, 0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, 1);
+        vc.addVertex(pose, x - hw, y - h, 0).setColor(255, 255, 255, 255).setUv(0, v1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, 1);
+        vc.addVertex(pose, x + hw, y - h, 0).setColor(255, 255, 255, 255).setUv(u1, v1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, 1);
+        vc.addVertex(pose, x + hw, y, 0).setColor(255, 255, 255, 255).setUv(u1, 0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, 1);
+
+        // Back face
+        vc.addVertex(pose, x + hw, y, 0).setColor(255, 255, 255, 255).setUv(0, 0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, -1);
+        vc.addVertex(pose, x + hw, y - h, 0).setColor(255, 255, 255, 255).setUv(0, v1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, -1);
+        vc.addVertex(pose, x - hw, y - h, 0).setColor(255, 255, 255, 255).setUv(u1, v1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, -1);
+        vc.addVertex(pose, x - hw, y, 0).setColor(255, 255, 255, 255).setUv(u1, 0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, -1);
     }
 
     private void drawDebugVector(PoseStack matrices, Vec3 startPos, Vec3 endPos, VertexConsumer buffer) {
@@ -289,6 +371,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             renderChainData.useBaked = chainHolder instanceof HangingEntity;
             renderChainData.slack = chainData.getSlack();
             renderChainData.buntings = new ArrayList<>(chainData.buntings);
+            renderChainData.banners = new ArrayList<>(chainData.banners);
             result.add(renderChainData);
         }
 
@@ -315,6 +398,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
                 renderChainData.useBaked = otherEntity instanceof HangingEntity;
                 renderChainData.slack = incomingLink.getSlack();
                 renderChainData.buntings = new ArrayList<>(incomingLink.buntings);
+                renderChainData.banners = new ArrayList<>(incomingLink.banners);
                 result.add(renderChainData);
             }
         }

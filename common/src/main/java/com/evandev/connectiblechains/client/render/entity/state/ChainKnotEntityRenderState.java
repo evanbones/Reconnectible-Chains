@@ -24,5 +24,6 @@ public class ChainKnotEntityRenderState {
         public int chainedEntitySkyLight = 15;
         public int chainHolderSkyLight = 15;
         public List<Chainable.ChainData.BuntingEntry> buntings = new ArrayList<>();
+        public List<Chainable.ChainData.BannerEntry> banners = new ArrayList<>();
     }
 }

@@ -2,6 +2,7 @@ package com.evandev.connectiblechains.entity;
 
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
+import com.evandev.connectiblechains.networking.packet.BannerSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
@@ -320,6 +321,9 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
             }
             if (holder != null && !chainData.buntings.isEmpty()) {
                 Services.NETWORK.sendToClient(player, new BuntingSyncS2CPacket(this.getId(), holder.getId(), chainData.buntings));
+            }
+            if (holder != null && !chainData.banners.isEmpty()) {
+                Services.NETWORK.sendToClient(player, new BannerSyncS2CPacket(this.getId(), holder.getId(), chainData.banners));
             }
         }
     }
