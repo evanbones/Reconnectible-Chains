@@ -5,6 +5,7 @@
 - Added default support for Caverns and Chasms chains.
 - Added Vines to the default chain connectible tag.
 - Added support for texture biome tinting.
+- Added an indication that a chain is reaching a maximum length (configurable).
 
 ### Changed
 

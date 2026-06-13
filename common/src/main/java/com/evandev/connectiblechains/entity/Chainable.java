@@ -17,10 +17,15 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.HangingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.BannerBlock;
@@ -246,7 +251,31 @@ public interface Chainable {
                         ChainCollisionEntity.createCollision(entity, chainData);
                     }
 
-                    if (distanceTo > getMaxChainLength()) {
+                    double maxRange = getMaxChainLength();
+
+                    if (chainHolder instanceof Player player) {
+                        double warningStart = maxRange * 0.75;
+                        if (distanceTo > warningStart) {
+                            float ratio = (float) ((distanceTo - warningStart) / (maxRange - warningStart));
+                            int interval = Math.max(2, (int) (20.0f * (1.0f - ratio)));
+                            if (++chainData.warningTickCounter >= interval) {
+                                chainData.warningTickCounter = 0;
+                                SoundType soundType = chainData.getSourceBlockSoundGroup();
+                                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                                        soundType.getHitSound(), SoundSource.PLAYERS, 0.4f,
+                                        0.6f + player.level().getRandom().nextFloat() * 0.4f);
+                                if (CommonClass.runtimeConfig.doShowRangeWarningHud() && player instanceof ServerPlayer serverPlayer) {
+                                    serverPlayer.displayClientMessage(
+                                            Component.translatable("message.connectiblechains.chain_range_warning").withStyle(ChatFormatting.YELLOW),
+                                            true);
+                                }
+                            }
+                        } else {
+                            chainData.warningTickCounter = 0;
+                        }
+                    }
+
+                    if (distanceTo > maxRange) {
                         entity.breakLongChain(chainData);
                     }
                 }
@@ -468,6 +497,7 @@ public interface Chainable {
         @Nullable
         public Either<UUID, BlockPos> unresolvedChainData;
         public float customSlack = -1f;
+        public int warningTickCounter = 0;
         private boolean isDead = false;
 
         public ChainData(@Nullable Either<UUID, BlockPos> unresolvedChainData, @NotNull Item sourceItem) {

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-06-12
+
+### Added
+
+- Supplementaries Buntings can now be placed on any Ropes!
+- Banners can now be placed on ropes.
+- Added default support for Caverns and Chasms chains.
+- Added Vines to the default chain connectible tag.
+- Added support for texture biome tinting.
+- Added an indication that a chain is reaching a maximum length (configurable).
+
+### Changed
+
+- Pressing shift will now bypass chain/rope knot placement.
+- Tweaked sounds for shearing.
+
 ## [1.2.5] - 2026-03-04
 
 ### Added
