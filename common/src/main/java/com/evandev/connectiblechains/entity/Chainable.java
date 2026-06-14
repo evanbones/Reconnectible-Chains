@@ -3,6 +3,7 @@ package com.evandev.connectiblechains.entity;
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.BannerSyncS2CPacket;
+import com.evandev.connectiblechains.util.HangingLightHelper;
 import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
@@ -190,6 +191,7 @@ public interface Chainable {
                     Services.NETWORK.sendToAllClients(serverWorld.getServer(), new ChainAttachS2CPacket(entity, holder, null, chainData.sourceItem));
                 }
                 ChainCollisionEntity.destroyCollision(serverWorld, chainData);
+                HangingLightHelper.removeAllForChain(serverWorld, entity, holder, chainData);
 
                 if (holder instanceof ChainKnotEntity knot) {
                     checkAndDiscardKnot(serverWorld, knot);
@@ -238,6 +240,7 @@ public interface Chainable {
             if (chainData.chainHolder instanceof Chainable) {
                 ChainCollisionEntity.createCollision(entity, chainData);
             }
+            HangingLightHelper.placeAllForChain(serverLevel, entity, chainData.chainHolder, chainData);
         }
     }
 

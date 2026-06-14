@@ -9,6 +9,7 @@ import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.HangingSyncS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -24,7 +25,11 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.BannerBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BannerPatternLayers;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -57,9 +62,10 @@ public class ChainRaycastHelper {
         Vec3 srcPos = chainable.getChainPos(1.0f);
         Vec3 dstPos = holderKnot.getChainPos(1.0f);
         double dx = dstPos.x() - srcPos.x();
+        double dy = dstPos.y() - srcPos.y();
         double dz = dstPos.z() - srcPos.z();
-        float distanceXZ = (float) Math.sqrt(dx * dx + dz * dz);
-        float minTSpacing = distanceXZ > 0 ? 0.5f / distanceXZ : 1.0f;
+        float distance3D = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        float minTSpacing = distance3D > 0 ? 0.5f / distance3D : 1.0f;
 
         float t = hit.t();
         if (minTSpacing < 1.0f) {
@@ -86,7 +92,7 @@ public class ChainRaycastHelper {
     }
 
     /**
-     * Attempts to remove the nearest decoration (bunting or banner) from a looked-at rope chain.
+     * Attempts to remove the nearest decoration from a looked-at rope chain.
      * Whichever is closest to the look point wins. Falls through if nothing is within 1.5 blocks.
      */
     public static boolean tryRemoveDecoration(Player player, InteractionHand hand) {
@@ -173,6 +179,8 @@ public class ChainRaycastHelper {
             }
             sendBannerSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
         } else {
+            BlockPos lightPos = HangingLightHelper.computeLightPos(chainedEntity, holderKnot, nearestHanging.t(), link.getSlack());
+            if (lightPos != null) HangingLightHelper.remove((ServerLevel) player.level(), lightPos);
             link.hangings.remove(nearestHanging);
             if (!player.isCreative()) {
                 Item item = BuiltInRegistries.ITEM.get(nearestHanging.blockId());
@@ -215,9 +223,10 @@ public class ChainRaycastHelper {
         Vec3 srcPos = chainable.getChainPos(1.0f);
         Vec3 dstPos = holderKnot.getChainPos(1.0f);
         double bdx = dstPos.x() - srcPos.x();
+        double bdy = dstPos.y() - srcPos.y();
         double bdz = dstPos.z() - srcPos.z();
-        float distanceXZ = (float) Math.sqrt(bdx * bdx + bdz * bdz);
-        float minTSpacing = distanceXZ > 0 ? 1.0f / distanceXZ : 1.0f;
+        float distance3D = (float) Math.sqrt(bdx * bdx + bdy * bdy + bdz * bdz);
+        float minTSpacing = distance3D > 0 ? 1.0f / distance3D : 1.0f;
 
         float t = hit.t();
         if (minTSpacing < 1.0f) {
@@ -274,9 +283,10 @@ public class ChainRaycastHelper {
         Vec3 srcPos = chainable.getChainPos(1.0f);
         Vec3 dstPos = holderKnot.getChainPos(1.0f);
         double hdx = dstPos.x() - srcPos.x();
+        double hdy = dstPos.y() - srcPos.y();
         double hdz = dstPos.z() - srcPos.z();
-        float distanceXZ = (float) Math.sqrt(hdx * hdx + hdz * hdz);
-        float minTSpacing = distanceXZ > 0 ? 1.0f / distanceXZ : 1.0f;
+        float distance3D = (float) Math.sqrt(hdx * hdx + hdy * hdy + hdz * hdz);
+        float minTSpacing = distance3D > 0 ? 1.0f / distance3D : 1.0f;
 
         float t = hit.t();
         if (minTSpacing < 1.0f) {
@@ -293,6 +303,16 @@ public class ChainRaycastHelper {
         link.hangings.add(new Chainable.ChainData.HangingEntry(t, blockId));
         link.hangings.sort(Comparator.comparingDouble(Chainable.ChainData.HangingEntry::t));
         if (!player.isCreative()) stack.shrink(1);
+
+        Block hangBlock = BuiltInRegistries.BLOCK.get(blockId);
+        if (hangBlock != Blocks.AIR) {
+            BlockState hangState = hangBlock.defaultBlockState();
+            if (hangState.hasProperty(BlockStateProperties.HANGING))
+                hangState = hangState.setValue(BlockStateProperties.HANGING, true);
+            BlockPos lightPos = HangingLightHelper.computeLightPos(chainedEntity, holderKnot, t, link.getSlack());
+            if (lightPos != null)
+                HangingLightHelper.place((ServerLevel) player.level(), lightPos, hangState.getLightEmission());
+        }
 
         sendHangingSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
@@ -351,13 +371,16 @@ public class ChainRaycastHelper {
                 return true;
             }
 
-            link.customSlack = 1.0f / currentSag;
             ServerLevel serverWorld = (ServerLevel) player.level();
+            Entity holder = chainable.getChainHolder(link);
+
+            HangingLightHelper.removeAllForChain(serverWorld, chainedEntity, holder, link);
+            link.customSlack = 1.0f / currentSag;
+            HangingLightHelper.placeAllForChain(serverWorld, chainedEntity, holder, link);
 
             ChainCollisionEntity.destroyCollision(serverWorld, link);
             ChainCollisionEntity.createCollision((Entity & Chainable) chainedEntity, link);
 
-            Entity holder = chainable.getChainHolder(link);
             if (holder != null) {
                 Services.NETWORK.sendToAllClients(serverWorld.getServer(), new ChainSlackSyncS2CPacket(chainedEntity.getId(), holder.getId(), link.customSlack));
             }

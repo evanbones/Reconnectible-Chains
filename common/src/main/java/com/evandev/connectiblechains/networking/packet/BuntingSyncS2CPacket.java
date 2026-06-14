@@ -40,6 +40,7 @@ public record BuntingSyncS2CPacket(int entityId, int holderId,
 
         if (holder != null) {
             data = chainable.getChainData(holder);
+            if (data == null) data = chainable.getChainData(holder);
         }
 
         if (data == null) {

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-06-14
+
+### Added
+
+- Added a `hangable_items` tag for blocks that can hang off chains.
+- `/connectchain` now takes an argument to place different chain types.
+- Lanterns can now be placed on chains.
+    - This also includes Quark Paper Lanterns by default.
+    - To add additional modded lanterns, just add them to the `hangable_items` tag.
+
 ## [2.0.0] - 2026-06-12
 
 ### Added
