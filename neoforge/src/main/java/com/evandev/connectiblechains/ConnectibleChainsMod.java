@@ -62,6 +62,11 @@ public class ConnectibleChainsMod {
             event.setCancellationResult(InteractionResult.SUCCESS);
             return;
         }
+        if (ChainRaycastHelper.tryPlaceHanging(event.getEntity(), event.getHand())) {
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
+            return;
+        }
         if (ChainRaycastHelper.tryRemoveDecoration(event.getEntity(), event.getHand())) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);

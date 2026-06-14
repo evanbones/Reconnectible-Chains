@@ -38,6 +38,9 @@ public class ConnectibleChainsMod implements ModInitializer {
             if (ChainRaycastHelper.tryPlaceBanner(player, hand)) {
                 return InteractionResultHolder.success(player.getItemInHand(hand));
             }
+            if (ChainRaycastHelper.tryPlaceHanging(player, hand)) {
+                return InteractionResultHolder.success(player.getItemInHand(hand));
+            }
             if (ChainRaycastHelper.tryRemoveDecoration(player, hand)) {
                 return InteractionResultHolder.success(player.getItemInHand(hand));
             }

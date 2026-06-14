@@ -10,6 +10,7 @@ import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
+import com.evandev.connectiblechains.networking.packet.HangingSyncS2CPacket;
 import com.evandev.connectiblechains.platform.FabricClientNetworkHelper;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
@@ -41,6 +42,7 @@ public class ConnectibleChainsModClient implements ClientModInitializer {
         FabricClientNetworkHelper.registerClientReceiver(ChainSlackSyncS2CPacket.class);
         FabricClientNetworkHelper.registerClientReceiver(BuntingSyncS2CPacket.class);
         FabricClientNetworkHelper.registerClientReceiver(BannerSyncS2CPacket.class);
+        FabricClientNetworkHelper.registerClientReceiver(HangingSyncS2CPacket.class);
 
         ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new IdentifiableResourceReloadListener() {
             @Override

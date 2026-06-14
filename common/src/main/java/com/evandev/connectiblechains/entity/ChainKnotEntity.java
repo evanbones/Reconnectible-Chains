@@ -6,6 +6,7 @@ import com.evandev.connectiblechains.networking.packet.BannerSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
+import com.evandev.connectiblechains.networking.packet.HangingSyncS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.evandev.connectiblechains.util.ChainTracker;
@@ -105,10 +106,6 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
     @Override
     public void tick() {
-        if (!this.level().isClientSide && !this.survives()) {
-            this.discard();
-            this.dropItem(null);
-        }
         super.tick();
 
         ChainTracker.register(this.level(), this);
@@ -324,6 +321,9 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
             }
             if (holder != null && !chainData.banners.isEmpty()) {
                 Services.NETWORK.sendToClient(player, new BannerSyncS2CPacket(this.getId(), holder.getId(), chainData.banners));
+            }
+            if (holder != null && !chainData.hangings.isEmpty()) {
+                Services.NETWORK.sendToClient(player, new HangingSyncS2CPacket(this.getId(), holder.getId(), chainData.hangings));
             }
         }
     }

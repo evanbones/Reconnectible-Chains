@@ -5,6 +5,7 @@ import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
+import com.evandev.connectiblechains.networking.packet.HangingSyncS2CPacket;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 public class FabricClientNetworkHelper {
@@ -29,6 +30,10 @@ public class FabricClientNetworkHelper {
         } else if (type == BannerSyncS2CPacket.class) {
             ClientPlayNetworking.registerGlobalReceiver(BannerSyncS2CPacket.TYPE, (payload, context) -> {
                 context.client().execute(() -> BannerSyncS2CPacket.handle(payload, context.player()));
+            });
+        } else if (type == HangingSyncS2CPacket.class) {
+            ClientPlayNetworking.registerGlobalReceiver(HangingSyncS2CPacket.TYPE, (payload, context) -> {
+                context.client().execute(() -> HangingSyncS2CPacket.handle(payload, context.player()));
             });
         }
     }

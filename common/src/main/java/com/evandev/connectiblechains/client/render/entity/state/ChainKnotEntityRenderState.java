@@ -27,5 +27,6 @@ public class ChainKnotEntityRenderState {
         public int tintColor = 0xFFCCCCCC;
         public List<Chainable.ChainData.BuntingEntry> buntings = new ArrayList<>();
         public List<Chainable.ChainData.BannerEntry> banners = new ArrayList<>();
+        public List<Chainable.ChainData.HangingEntry> hangings = new ArrayList<>();
     }
 }

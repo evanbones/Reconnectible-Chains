@@ -1,13 +1,5 @@
 ### Added
 
-- Supplementaries Buntings can now be placed on any Ropes!
-- Banners can now be placed on ropes.
-- Added default support for Caverns and Chasms chains.
-- Added Vines to the default chain connectible tag.
-- Added support for texture biome tinting.
-- Added an indication that a chain is reaching a maximum length (configurable).
-
-### Changed
-
-- Pressing shift will now bypass chain/rope knot placement.
-- Tweaked sounds for shearing.
+- Added a `hangable_items` tag for blocks that can hang off chains.
+- `/connectchain` now supports placing different chain types.
+- Lanterns and Hanging Signs can now be placed on chains.

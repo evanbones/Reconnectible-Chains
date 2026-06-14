@@ -6,6 +6,7 @@ import com.evandev.connectiblechains.entity.Chainable;
 import com.evandev.connectiblechains.networking.packet.BannerSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
+import com.evandev.connectiblechains.networking.packet.HangingSyncS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import net.minecraft.core.component.DataComponents;
@@ -46,7 +47,7 @@ public class ChainRaycastHelper {
         if (hitOpt.isEmpty()) return false;
 
         ChainHitResult hit = hitOpt.get();
-        if (!new ItemStack(hit.chainData().sourceItem).is(ModTagRegistry.ROPES)) return false;
+        if (!new ItemStack(hit.chainData().sourceItem).is(ModTagRegistry.BUNTING_CHAIN_SOURCES)) return false;
 
         Entity chainedEntity = hit.chainedEntity();
         if (!(chainedEntity instanceof Chainable chainable)) return false;
@@ -67,12 +68,7 @@ public class ChainRaycastHelper {
         }
 
         Chainable.ChainData link = hit.chainData();
-        for (Chainable.ChainData.BuntingEntry entry : link.buntings) {
-            if (Math.abs(entry.t() - t) < minTSpacing * 0.5f) return false;
-        }
-        for (Chainable.ChainData.BannerEntry entry : link.banners) {
-            if (Math.abs(entry.t() - t) < minTSpacing * 0.5f) return false;
-        }
+        if (isSlotOccupied(link, t, minTSpacing * 0.5f)) return false;
 
         if (player.level().isClientSide) return true;
 
@@ -138,21 +134,33 @@ public class ChainRaycastHelper {
             }
         }
 
+        Chainable.ChainData.HangingEntry nearestHanging = null;
+        float nearestHangingDist = Float.MAX_VALUE;
+        for (Chainable.ChainData.HangingEntry e : link.hangings) {
+            float d = Math.abs(e.t() - t);
+            if (d < nearestHangingDist) {
+                nearestHangingDist = d;
+                nearestHanging = e;
+            }
+        }
+
         float buntingWorldDist = nearestBunting != null ? nearestBuntingDist * distXZ : Float.MAX_VALUE;
         float bannerWorldDist = nearestBanner != null ? nearestBannerDist * distXZ : Float.MAX_VALUE;
+        float hangingWorldDist = nearestHanging != null ? nearestHangingDist * distXZ : Float.MAX_VALUE;
 
-        if (buntingWorldDist > 1.5f && bannerWorldDist > 1.5f) return false;
+        if (buntingWorldDist > 1.5f && bannerWorldDist > 1.5f && hangingWorldDist > 1.5f) return false;
 
         if (player.level().isClientSide) return true;
 
-        if (buntingWorldDist <= bannerWorldDist) {
+        float minDist = Math.min(buntingWorldDist, Math.min(bannerWorldDist, hangingWorldDist));
+        if (minDist == buntingWorldDist) {
             link.buntings.remove(nearestBunting);
             if (!player.isCreative()) {
                 Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("supplementaries", "bunting_" + nearestBunting.color().getName()));
                 if (item != Items.AIR) player.getInventory().add(new ItemStack(item));
             }
             sendBuntingSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
-        } else {
+        } else if (minDist == bannerWorldDist) {
             link.banners.remove(nearestBanner);
             if (!player.isCreative()) {
                 ItemStack bannerStack = BannerBlock.byColor(nearestBanner.color()).asItem().getDefaultInstance();
@@ -164,10 +172,24 @@ public class ChainRaycastHelper {
                 player.getInventory().add(bannerStack);
             }
             sendBannerSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
+        } else {
+            link.hangings.remove(nearestHanging);
+            if (!player.isCreative()) {
+                Item item = BuiltInRegistries.ITEM.get(nearestHanging.blockId());
+                if (item != Items.AIR) player.getInventory().add(new ItemStack(item));
+            }
+            sendHangingSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
         }
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 SoundEvents.SHEEP_SHEAR, SoundSource.PLAYERS, 0.8f, 0.9f + player.level().random.nextFloat() * 0.2f);
         return true;
+    }
+
+    private static boolean isSlotOccupied(Chainable.ChainData link, float t, float halfSpacing) {
+        for (Chainable.ChainData.BuntingEntry e : link.buntings) if (Math.abs(e.t() - t) < halfSpacing) return true;
+        for (Chainable.ChainData.BannerEntry e : link.banners) if (Math.abs(e.t() - t) < halfSpacing) return true;
+        for (Chainable.ChainData.HangingEntry e : link.hangings) if (Math.abs(e.t() - t) < halfSpacing) return true;
+        return false;
     }
 
     private static void sendBuntingSync(Entity chainedEntity, ChainKnotEntity holder, Chainable.ChainData link, ServerLevel level) {
@@ -183,7 +205,7 @@ public class ChainRaycastHelper {
         if (hitOpt.isEmpty()) return false;
 
         ChainHitResult hit = hitOpt.get();
-        if (!new ItemStack(hit.chainData().sourceItem).is(ModTagRegistry.ROPES)) return false;
+        if (!new ItemStack(hit.chainData().sourceItem).is(ModTagRegistry.BANNER_CHAIN_SOURCES)) return false;
 
         Entity chainedEntity = hit.chainedEntity();
         if (!(chainedEntity instanceof Chainable chainable)) return false;
@@ -204,12 +226,7 @@ public class ChainRaycastHelper {
         }
 
         Chainable.ChainData link = hit.chainData();
-        for (Chainable.ChainData.BannerEntry entry : link.banners) {
-            if (Math.abs(entry.t() - t) < minTSpacing * 0.5f) return false;
-        }
-        for (Chainable.ChainData.BuntingEntry entry : link.buntings) {
-            if (Math.abs(entry.t() - t) < minTSpacing * 0.5f) return false;
-        }
+        if (isSlotOccupied(link, t, minTSpacing * 0.5f)) return false;
 
         if (player.level().isClientSide) return true;
 
@@ -236,6 +253,55 @@ public class ChainRaycastHelper {
 
     private static void sendBannerSync(Entity chainedEntity, ChainKnotEntity holder, Chainable.ChainData link, ServerLevel level) {
         Services.NETWORK.sendToAllClients(level.getServer(), new BannerSyncS2CPacket(chainedEntity.getId(), holder.getId(), new ArrayList<>(link.banners)));
+    }
+
+    public static boolean tryPlaceHanging(Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (!stack.is(ModTagRegistry.HANGABLE_ITEMS)) return false;
+
+        double reach = player.isCreative() ? 5.0 : 4.5;
+        Optional<ChainHitResult> hitOpt = raycastChains(player, reach);
+        if (hitOpt.isEmpty()) return false;
+
+        ChainHitResult hit = hitOpt.get();
+        if (!new ItemStack(hit.chainData().sourceItem).is(ModTagRegistry.HANGING_CHAIN_SOURCES)) return false;
+
+        Entity chainedEntity = hit.chainedEntity();
+        if (!(chainedEntity instanceof Chainable chainable)) return false;
+        Entity holder = chainable.getChainHolder(hit.chainData());
+        if (!(holder instanceof ChainKnotEntity holderKnot)) return false;
+
+        Vec3 srcPos = chainable.getChainPos(1.0f);
+        Vec3 dstPos = holderKnot.getChainPos(1.0f);
+        double hdx = dstPos.x() - srcPos.x();
+        double hdz = dstPos.z() - srcPos.z();
+        float distanceXZ = (float) Math.sqrt(hdx * hdx + hdz * hdz);
+        float minTSpacing = distanceXZ > 0 ? 1.0f / distanceXZ : 1.0f;
+
+        float t = hit.t();
+        if (minTSpacing < 1.0f) {
+            t = Math.round(t / minTSpacing) * minTSpacing;
+            t = Math.max(0.0f, Math.min(1.0f, t));
+        }
+
+        Chainable.ChainData link = hit.chainData();
+        if (isSlotOccupied(link, t, minTSpacing * 0.5f)) return false;
+
+        if (player.level().isClientSide) return true;
+
+        ResourceLocation blockId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        link.hangings.add(new Chainable.ChainData.HangingEntry(t, blockId));
+        link.hangings.sort(Comparator.comparingDouble(Chainable.ChainData.HangingEntry::t));
+        if (!player.isCreative()) stack.shrink(1);
+
+        sendHangingSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.CHAIN_PLACE, SoundSource.PLAYERS, 1.0f, 0.9f + player.level().random.nextFloat() * 0.2f);
+        return true;
+    }
+
+    private static void sendHangingSync(Entity chainedEntity, ChainKnotEntity holder, Chainable.ChainData link, ServerLevel level) {
+        Services.NETWORK.sendToAllClients(level.getServer(), new HangingSyncS2CPacket(chainedEntity.getId(), holder.getId(), new ArrayList<>(link.hangings)));
     }
 
     public static DyeColor getBuntingColor(Item item) {

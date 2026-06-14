@@ -6,6 +6,7 @@ import com.evandev.connectiblechains.networking.packet.BannerSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
+import com.evandev.connectiblechains.networking.packet.HangingSyncS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.mojang.datafixers.util.Either;
@@ -97,6 +98,15 @@ public interface Chainable {
                             newChainData.banners.add(new ChainData.BannerEntry(bannerTag.getFloat("T"), color, data));
                         }
                     }
+                    if (compound.contains("Hangings", Tag.TAG_LIST)) {
+                        ListTag hangingList = compound.getList("Hangings", Tag.TAG_COMPOUND);
+                        for (Tag hTag : hangingList) {
+                            if (!(hTag instanceof CompoundTag hangingTag)) continue;
+                            ResourceLocation blockId = ResourceLocation.tryParse(hangingTag.getString("Block"));
+                            if (blockId != null)
+                                newChainData.hangings.add(new ChainData.HangingEntry(hangingTag.getFloat("T"), blockId));
+                        }
+                    }
                     result.add(newChainData);
                 }
             }
@@ -119,6 +129,7 @@ public interface Chainable {
                         newChainData.customSlack = chainData.customSlack;
                         newChainData.buntings.addAll(chainData.buntings);
                         newChainData.banners.addAll(chainData.banners);
+                        newChainData.hangings.addAll(chainData.hangings);
                         entity.replaceChainData(chainData, null);
                         attachChain(entity, newChainData, null, true);
                     }
@@ -135,6 +146,7 @@ public interface Chainable {
                         newChainData.customSlack = chainData.customSlack;
                         newChainData.buntings.addAll(chainData.buntings);
                         newChainData.banners.addAll(chainData.banners);
+                        newChainData.hangings.addAll(chainData.hangings);
                         entity.replaceChainData(chainData, null);
                         attachChain(entity, newChainData, null, true);
                     }
@@ -167,6 +179,10 @@ public interface Chainable {
                                     .result().ifPresent(p -> bannerStack.set(DataComponents.BANNER_PATTERNS, p));
                         }
                         entity.spawnAtLocation(bannerStack);
+                    }
+                    for (ChainData.HangingEntry entry : chainData.hangings) {
+                        Item hangingItem = BuiltInRegistries.ITEM.get(entry.blockId());
+                        if (hangingItem != Items.AIR) entity.spawnAtLocation(hangingItem);
                     }
                 }
 
@@ -215,6 +231,9 @@ public interface Chainable {
             }
             if (!chainData.banners.isEmpty()) {
                 Services.NETWORK.sendToAllClients(serverLevel.getServer(), new BannerSyncS2CPacket(entity.getId(), chainData.chainHolder.getId(), new ArrayList<>(chainData.banners)));
+            }
+            if (!chainData.hangings.isEmpty()) {
+                Services.NETWORK.sendToAllClients(serverLevel.getServer(), new HangingSyncS2CPacket(entity.getId(), chainData.chainHolder.getId(), new ArrayList<>(chainData.hangings)));
             }
             if (chainData.chainHolder instanceof Chainable) {
                 ChainCollisionEntity.createCollision(entity, chainData);
@@ -296,6 +315,7 @@ public interface Chainable {
                 newData.customSlack = chainData.customSlack;
                 newData.buntings.addAll(chainData.buntings);
                 newData.banners.addAll(chainData.banners);
+                newData.hangings.addAll(chainData.hangings);
                 entity.replaceChainData(chainData, newData);
             }
         }
@@ -382,6 +402,16 @@ public interface Chainable {
                         }
                         nbtCompound.put("Banners", bannerList);
                     }
+                    if (!chainData.hangings.isEmpty()) {
+                        ListTag hangingList = new ListTag();
+                        for (ChainData.HangingEntry entry : chainData.hangings) {
+                            CompoundTag ht = new CompoundTag();
+                            ht.putFloat("T", entry.t());
+                            ht.putString("Block", entry.blockId().toString());
+                            hangingList.add(ht);
+                        }
+                        nbtCompound.put("Hangings", hangingList);
+                    }
                     return nbtCompound;
                 }, blockPos -> {
                     CompoundTag nbtCompound = new CompoundTag();
@@ -409,6 +439,16 @@ public interface Chainable {
                             bannerList.add(bt);
                         }
                         nbtCompound.put("Banners", bannerList);
+                    }
+                    if (!chainData.hangings.isEmpty()) {
+                        ListTag hangingList = new ListTag();
+                        for (ChainData.HangingEntry entry : chainData.hangings) {
+                            CompoundTag ht = new CompoundTag();
+                            ht.putFloat("T", entry.t());
+                            ht.putString("Block", entry.blockId().toString());
+                            hangingList.add(ht);
+                        }
+                        nbtCompound.put("Hangings", hangingList);
                     }
                     return nbtCompound;
                 }));
@@ -492,6 +532,7 @@ public interface Chainable {
         public final int unresolvedChainHolderId;
         public final List<BuntingEntry> buntings = new ArrayList<>();
         public final List<BannerEntry> banners = new ArrayList<>();
+        public final List<HangingEntry> hangings = new ArrayList<>();
         @Nullable
         private final Entity chainHolder;
         @Nullable
@@ -573,6 +614,9 @@ public interface Chainable {
         }
 
         public record BannerEntry(float t, DyeColor color, CompoundTag data) {
+        }
+
+        public record HangingEntry(float t, ResourceLocation blockId) {
         }
     }
 }
