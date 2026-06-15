@@ -94,6 +94,11 @@ public class ChainTextureManager extends SimpleJsonResourceReloadListener {
                 });
     }
 
+    public Optional<String> getTint(Item sourceItem) {
+        ResourceLocation sourceItemId = BuiltInRegistries.ITEM.getKey(sourceItem);
+        return Optional.ofNullable(models.get(sourceItemId)).flatMap(CatenaryModel::tint);
+    }
+
     public ResourceLocation getKnotTexture(Item sourceItem) {
         ResourceLocation sourceItemId = BuiltInRegistries.ITEM.getKey(sourceItem);
         return Optional.ofNullable(models.get(sourceItemId))

@@ -25,6 +25,22 @@
     {
       "id": "textiles_and_trinkets:ferrymans_chain",
       "required": false
+    },
+    {
+      "id": "#caverns_and_chasms:copper_chains",
+      "required": false
+    },
+    {
+      "id": "caverns_and_chasms:silver_chain",
+      "required": false
+    },
+    {
+      "id": "caverns_and_chasms:golden_chain",
+      "required": false
+    },
+    {
+      "id": "caverns_and_chasms:tin_chain",
+      "required": false
     }
   ]
 }

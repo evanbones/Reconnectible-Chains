@@ -22,6 +22,18 @@ public class ConnectibleChainsMod implements ModInitializer {
         UseBlockCallback.EVENT.register(ChainItemCallbacks::chainUseEvent);
 
         UseItemCallback.EVENT.register((player, level, hand) -> {
+            if (ChainRaycastHelper.tryPlaceBunting(player, hand)) {
+                return InteractionResultHolder.success(player.getItemInHand(hand));
+            }
+            if (ChainRaycastHelper.tryPlaceBanner(player, hand)) {
+                return InteractionResultHolder.success(player.getItemInHand(hand));
+            }
+            if (ChainRaycastHelper.tryPlaceHanging(player, hand)) {
+                return InteractionResultHolder.success(player.getItemInHand(hand));
+            }
+            if (ChainRaycastHelper.tryRemoveDecoration(player, hand)) {
+                return InteractionResultHolder.success(player.getItemInHand(hand));
+            }
             if (ChainRaycastHelper.tryAdjustSlack(player, hand)) {
                 return InteractionResultHolder.success(player.getItemInHand(hand));
             }

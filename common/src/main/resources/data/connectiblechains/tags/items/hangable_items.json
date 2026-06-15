@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:lantern",
+    "minecraft:soul_lantern",
+    {
+      "id": "quark:paper_lantern",
+      "required": false
+    }
+  ]
+}

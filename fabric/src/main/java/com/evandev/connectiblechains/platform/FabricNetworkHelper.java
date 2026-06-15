@@ -1,9 +1,12 @@
 package com.evandev.connectiblechains.platform;
 
 import com.evandev.connectiblechains.CommonClass;
+import com.evandev.connectiblechains.networking.packet.BannerSyncS2CPacket;
+import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
+import com.evandev.connectiblechains.networking.packet.HangingSyncS2CPacket;
 import com.evandev.connectiblechains.platform.services.INetworkHelper;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
@@ -36,13 +39,22 @@ public class FabricNetworkHelper implements INetworkHelper {
 
         if (packet instanceof ChainAttachS2CPacket p) {
             p.write(buf);
-            packetId = new ResourceLocation(CommonClass.MODID, "s2c_chain_attach_packet_id");
+            packetId = ChainAttachS2CPacket.TYPE;
         } else if (packet instanceof ConfigSyncPayload p) {
             p.write(buf);
             packetId = new ResourceLocation(CommonClass.MODID, "config_sync");
         } else if (packet instanceof ChainSlackSyncS2CPacket p) {
             p.write(buf);
-            packetId = new ResourceLocation(CommonClass.MODID, "s2c_chain_slack_sync");
+            packetId = ChainSlackSyncS2CPacket.TYPE;
+        } else if (packet instanceof BuntingSyncS2CPacket p) {
+            p.write(buf);
+            packetId = BuntingSyncS2CPacket.TYPE;
+        } else if (packet instanceof BannerSyncS2CPacket p) {
+            p.write(buf);
+            packetId = BannerSyncS2CPacket.TYPE;
+        } else if (packet instanceof HangingSyncS2CPacket p) {
+            p.write(buf);
+            packetId = HangingSyncS2CPacket.TYPE;
         }
 
         if (packetId != null) {
@@ -57,13 +69,22 @@ public class FabricNetworkHelper implements INetworkHelper {
 
         if (packet instanceof ChainAttachS2CPacket p) {
             p.write(buf);
-            packetId = new ResourceLocation(CommonClass.MODID, "s2c_chain_attach_packet_id");
+            packetId = ChainAttachS2CPacket.TYPE;
         } else if (packet instanceof ConfigSyncPayload p) {
             p.write(buf);
             packetId = new ResourceLocation(CommonClass.MODID, "config_sync");
         } else if (packet instanceof ChainSlackSyncS2CPacket p) {
             p.write(buf);
-            packetId = new ResourceLocation(CommonClass.MODID, "s2c_chain_slack_sync");
+            packetId = ChainSlackSyncS2CPacket.TYPE;
+        } else if (packet instanceof BuntingSyncS2CPacket p) {
+            p.write(buf);
+            packetId = BuntingSyncS2CPacket.TYPE;
+        } else if (packet instanceof BannerSyncS2CPacket p) {
+            p.write(buf);
+            packetId = BannerSyncS2CPacket.TYPE;
+        } else if (packet instanceof HangingSyncS2CPacket p) {
+            p.write(buf);
+            packetId = HangingSyncS2CPacket.TYPE;
         }
 
         if (packetId != null && server != null) {
@@ -88,6 +109,18 @@ public class FabricNetworkHelper implements INetworkHelper {
                     } else if (packet instanceof ChainSlackSyncS2CPacket p) {
                         if (client.player != null) {
                             ChainSlackSyncS2CPacket.handle(p, client.player);
+                        }
+                    } else if (packet instanceof BuntingSyncS2CPacket p) {
+                        if (client.player != null) {
+                            BuntingSyncS2CPacket.handle(p, client.player);
+                        }
+                    } else if (packet instanceof BannerSyncS2CPacket p) {
+                        if (client.player != null) {
+                            BannerSyncS2CPacket.handle(p, client.player);
+                        }
+                    } else if (packet instanceof HangingSyncS2CPacket p) {
+                        if (client.player != null) {
+                            HangingSyncS2CPacket.handle(p, client.player);
                         }
                     }
                 });

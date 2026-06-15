@@ -1,0 +1,14 @@
+{
+  "textures": {
+    "chain": "connectiblechains:block/vine",
+    "knot": "connectiblechains:block/vine"
+  },
+  "model": "connectiblechains:square",
+  "uv": [
+    7,
+    9,
+    7,
+    9
+  ],
+  "tint": "foliage"
+}

@@ -50,6 +50,10 @@ dependencies {
     // EMI
     modImplementation "dev.emi:emi-forge:${emi_version}"
 
+    // Supplementaries
+    modImplementation "maven.modrinth:supplementaries:${supplementaries_version_forge}"
+    modImplementation "maven.modrinth:moonlight:${moonlight_version_forge}"
+
     // Cloth Config
     modImplementation "me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}"
 

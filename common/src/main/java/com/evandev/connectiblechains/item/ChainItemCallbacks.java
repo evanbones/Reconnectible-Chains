@@ -52,6 +52,10 @@ public class ChainItemCallbacks {
 
             Direction knotDir = determineKnotDirection(blockState, hitResult.getDirection());
 
+            if (player.isShiftKeyDown() && existingKnot == null) {
+                return InteractionResult.PASS;
+            }
+
             if (stack.is(ModTagRegistry.CATENARY_ITEMS)) {
                 if (existingKnot != null && existingKnot.getSourceItem() != stack.getItem()) {
                     return InteractionResult.FAIL;

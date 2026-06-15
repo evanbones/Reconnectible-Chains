@@ -2,6 +2,7 @@ package com.evandev.connectiblechains.client.render.entity.catenary;
 
 import com.evandev.connectiblechains.client.render.entity.UVRect;
 import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.ResourceLocation;
@@ -9,11 +10,12 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.Optional;
 
 public record CatenaryModel(Optional<CatenaryTextures> textures, Optional<ResourceLocation> catenaryRendererId,
-                            Optional<Pair<UVRect, UVRect>> uvRects) {
+                            Optional<Pair<UVRect, UVRect>> uvRects, Optional<String> tint) {
     public static final MapCodec<CatenaryModel> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             CatenaryTextures.CODEC.codec().optionalFieldOf("textures").forGetter(CatenaryModel::textures),
             ResourceLocation.CODEC.optionalFieldOf("model").forGetter(CatenaryModel::catenaryRendererId),
-            UVRect.CODEC.optionalFieldOf("uv").forGetter(CatenaryModel::uvRects)
+            UVRect.CODEC.optionalFieldOf("uv").forGetter(CatenaryModel::uvRects),
+            Codec.STRING.optionalFieldOf("tint").forGetter(CatenaryModel::tint)
     ).apply(instance, CatenaryModel::new));
 
     public record CatenaryTextures(Optional<ResourceLocation> chainTexture, Optional<ResourceLocation> knotTexture) {

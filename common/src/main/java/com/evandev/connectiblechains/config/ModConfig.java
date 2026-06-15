@@ -24,6 +24,9 @@ public class ModConfig implements ConfigData {
     private boolean showToolTip = true;
 
     @ConfigEntry.Gui.Tooltip()
+    private boolean showRangeWarningHud = true;
+
+    @ConfigEntry.Gui.Tooltip()
     private boolean collisionsEnabled = false;
 
     @ConfigEntry.Gui.Tooltip()
@@ -77,6 +80,7 @@ public class ModConfig implements ConfigData {
         this.maxChainRange = config.maxChainRange;
         this.quality = config.quality;
         this.showToolTip = config.showToolTip;
+        this.showRangeWarningHud = config.showRangeWarningHud;
         this.collisionsEnabled = config.collisionsEnabled;
         this.debugDraw = config.debugDraw;
         return this;
@@ -84,5 +88,9 @@ public class ModConfig implements ConfigData {
 
     public boolean doShowToolTip() {
         return showToolTip;
+    }
+
+    public boolean doShowRangeWarningHud() {
+        return showRangeWarningHud;
     }
 }

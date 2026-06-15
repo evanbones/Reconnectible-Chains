@@ -2,9 +2,12 @@ package com.evandev.connectiblechains;
 
 import com.evandev.connectiblechains.config.ModConfig;
 import com.evandev.connectiblechains.entity.ModEntityTypes;
+import com.evandev.connectiblechains.networking.packet.BannerSyncS2CPacket;
+import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
+import com.evandev.connectiblechains.networking.packet.HangingSyncS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
 import com.mojang.logging.LogUtils;
 import me.shedaniel.autoconfig.AutoConfig;
@@ -50,6 +53,24 @@ public class CommonClass {
                 ChainSlackSyncS2CPacket.class,
                 ChainSlackSyncS2CPacket.TYPE,
                 ChainSlackSyncS2CPacket::new
+        );
+
+        Services.NETWORK.registerClientReceiver(
+                BuntingSyncS2CPacket.class,
+                BuntingSyncS2CPacket.TYPE,
+                BuntingSyncS2CPacket::new
+        );
+
+        Services.NETWORK.registerClientReceiver(
+                BannerSyncS2CPacket.class,
+                BannerSyncS2CPacket.TYPE,
+                BannerSyncS2CPacket::new
+        );
+
+        Services.NETWORK.registerClientReceiver(
+                HangingSyncS2CPacket.class,
+                HangingSyncS2CPacket.TYPE,
+                HangingSyncS2CPacket::new
         );
     }
 }

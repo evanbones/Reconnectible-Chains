@@ -2,8 +2,7 @@ package com.evandev.connectiblechains.entity;
 
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
-import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
-import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
+import com.evandev.connectiblechains.networking.packet.*;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.evandev.connectiblechains.util.ChainTracker;
@@ -34,6 +33,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
@@ -97,10 +97,6 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
     @Override
     public void tick() {
-        if (!this.level().isClientSide && !this.survives()) {
-            this.discard();
-            this.dropItem(null);
-        }
         super.tick();
 
         ChainTracker.register(this.level(), this);
@@ -306,6 +302,15 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
             Services.NETWORK.sendToClient(player, new ChainAttachS2CPacket(this, null, holder, chainData.sourceItem));
             if (holder != null && chainData.customSlack >= 0) {
                 Services.NETWORK.sendToClient(player, new ChainSlackSyncS2CPacket(this.getId(), holder.getId(), chainData.customSlack));
+            }
+            if (holder != null && !chainData.buntings.isEmpty()) {
+                Services.NETWORK.sendToClient(player, new BuntingSyncS2CPacket(this.getId(), holder.getId(), new ArrayList<>(chainData.buntings)));
+            }
+            if (holder != null && !chainData.banners.isEmpty()) {
+                Services.NETWORK.sendToClient(player, new BannerSyncS2CPacket(this.getId(), holder.getId(), new ArrayList<>(chainData.banners)));
+            }
+            if (holder != null && !chainData.hangings.isEmpty()) {
+                Services.NETWORK.sendToClient(player, new HangingSyncS2CPacket(this.getId(), holder.getId(), new ArrayList<>(chainData.hangings)));
             }
         }
     }

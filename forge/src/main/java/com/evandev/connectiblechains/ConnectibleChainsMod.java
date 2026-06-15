@@ -68,14 +68,22 @@ public class ConnectibleChainsMod {
     }
 
     private void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        if (ChainRaycastHelper.tryAdjustSlack(event.getEntity(), event.getHand())) {
+        if (ChainRaycastHelper.tryPlaceBunting(event.getEntity(), event.getHand())
+                || ChainRaycastHelper.tryPlaceBanner(event.getEntity(), event.getHand())
+                || ChainRaycastHelper.tryPlaceHanging(event.getEntity(), event.getHand())
+                || ChainRaycastHelper.tryRemoveDecoration(event.getEntity(), event.getHand())
+                || ChainRaycastHelper.tryAdjustSlack(event.getEntity(), event.getHand())) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);
         }
     }
 
     private void onRightClickEmpty(PlayerInteractEvent.RightClickEmpty event) {
-        if (ChainRaycastHelper.tryAdjustSlack(event.getEntity(), event.getHand())) {
+        if (ChainRaycastHelper.tryPlaceBunting(event.getEntity(), event.getHand())
+                || ChainRaycastHelper.tryPlaceBanner(event.getEntity(), event.getHand())
+                || ChainRaycastHelper.tryPlaceHanging(event.getEntity(), event.getHand())
+                || ChainRaycastHelper.tryRemoveDecoration(event.getEntity(), event.getHand())
+                || ChainRaycastHelper.tryAdjustSlack(event.getEntity(), event.getHand())) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);
         }
