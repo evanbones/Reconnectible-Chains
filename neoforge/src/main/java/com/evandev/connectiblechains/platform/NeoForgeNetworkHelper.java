@@ -59,6 +59,12 @@ public class NeoForgeNetworkHelper implements INetworkHelper {
                 ChainBreakC2SPacket.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ChainBreakC2SPacket.handle(payload, context.player()))
         );
+
+        registrar.playToServer(
+                DecorationRemoveC2SPacket.TYPE,
+                DecorationRemoveC2SPacket.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> DecorationRemoveC2SPacket.handle(context.player()))
+        );
     }
 
     @Override

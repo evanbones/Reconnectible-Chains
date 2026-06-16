@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.Block;
 public class ModTagRegistry {
     public static final TagKey<Block> CHAIN_CONNECTIBLE = makeTag(Registries.BLOCK, MathHelper.identifier("chain_connectible"));
     public static final TagKey<Item> CATENARY_ITEMS = makeTag(Registries.ITEM, MathHelper.identifier("catenary_items"));
+    public static final TagKey<Item> SHEAR_TOOLS = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", "tools/shear"));
     public static final TagKey<Item> ROPES = makeTag(Registries.ITEM, MathHelper.identifier("ropes"));
     public static final TagKey<Item> BUNTING_ITEMS = makeTag(Registries.ITEM, MathHelper.identifier("bunting_items"));
     public static final TagKey<Item> HANGABLE_ITEMS = makeTag(Registries.ITEM, MathHelper.identifier("hangable_items"));

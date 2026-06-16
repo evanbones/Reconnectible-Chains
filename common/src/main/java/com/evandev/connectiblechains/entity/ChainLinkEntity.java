@@ -1,5 +1,6 @@
 package com.evandev.connectiblechains.entity;
 
+import com.evandev.connectiblechains.tag.ModTagRegistry;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.InteractionResult;
@@ -7,7 +8,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Items;
 
 public interface ChainLinkEntity {
     private static <E extends Entity & ChainLinkEntity> InteractionResult onDamageFrom(E self, DamageSource source, SoundEvent hitSound) {
@@ -23,7 +23,7 @@ public interface ChainLinkEntity {
         }
 
         if (source.getEntity() instanceof Player player) {
-            if (player.getMainHandItem().is(Items.SHEARS)) {
+            if (player.getMainHandItem().is(ModTagRegistry.SHEAR_TOOLS)) {
                 player.getMainHandItem().hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
                 return InteractionResult.SUCCESS;
             }

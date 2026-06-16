@@ -273,6 +273,10 @@ public interface Chainable {
                         ChainCollisionEntity.createCollision(entity, chainData);
                     }
 
+                    if (!chainData.hangings.isEmpty() && level.getGameTime() % 40 == 0) {
+                        HangingLightHelper.placeAllForChain(level, entity, chainHolder, chainData);
+                    }
+
                     double maxRange = getMaxChainLength();
 
                     if (chainHolder instanceof Player player) {

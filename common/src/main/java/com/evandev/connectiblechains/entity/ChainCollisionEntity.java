@@ -1,6 +1,8 @@
 package com.evandev.connectiblechains.entity;
 
 import com.evandev.connectiblechains.CommonClass;
+import com.evandev.connectiblechains.tag.ModTagRegistry;
+import com.evandev.connectiblechains.util.ChainRaycastHelper;
 import com.evandev.connectiblechains.util.MathHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -20,7 +22,6 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
@@ -189,7 +190,7 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
         if (level().isClientSide) return false;
 
         if (source.getEntity() instanceof Player player) {
-            if (!player.getMainHandItem().is(Items.SHEARS)) return false;
+            if (!player.getMainHandItem().is(ModTagRegistry.SHEAR_TOOLS)) return false;
 
             if (getLink() == null) {
                 this.discard();
@@ -211,6 +212,12 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
 
     @Override
     public @NotNull InteractionResult interact(@NotNull Player player, @NotNull InteractionHand hand) {
+        if (ChainRaycastHelper.tryRemoveDecoration(player, hand)) {
+            return InteractionResult.SUCCESS;
+        }
+        if (ChainRaycastHelper.tryAdjustSlack(player, hand)) {
+            return InteractionResult.SUCCESS;
+        }
         return InteractionResult.PASS;
     }
 

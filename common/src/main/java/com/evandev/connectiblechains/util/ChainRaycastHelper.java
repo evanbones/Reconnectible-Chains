@@ -22,6 +22,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.BannerBlock;
@@ -37,6 +38,8 @@ import java.util.Comparator;
 import java.util.Optional;
 
 public class ChainRaycastHelper {
+
+    private static long lastRemovalTick = -100L;
 
     /**
      * Attempts to place a bunting on a looked-at rope chain.
@@ -67,11 +70,13 @@ public class ChainRaycastHelper {
         float distance3D = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
         float minTSpacing = distance3D > 0 ? 0.5f / distance3D : 1.0f;
 
+        float minT = minTSpacing;
+        float maxT = 1.0f - minTSpacing;
+        if (minT > maxT) return false;
+
         float t = hit.t();
-        if (minTSpacing < 1.0f) {
-            t = Math.round(t / minTSpacing) * minTSpacing;
-            t = Math.max(0.0f, Math.min(1.0f, t));
-        }
+        t = Math.round(t / minTSpacing) * minTSpacing;
+        t = Math.max(minT, Math.min(maxT, t));
 
         Chainable.ChainData link = hit.chainData();
         if (isSlotOccupied(link, t, minTSpacing * 0.5f)) return false;
@@ -91,106 +96,124 @@ public class ChainRaycastHelper {
         return true;
     }
 
-    /**
-     * Attempts to remove the nearest decoration from a looked-at rope chain.
-     * Whichever is closest to the look point wins. Falls through if nothing is within 1.5 blocks.
-     */
     public static boolean tryRemoveDecoration(Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (!stack.is(Items.SHEARS)) return false;
+        if (!stack.isEmpty()) return false;
+        if (hand == InteractionHand.OFF_HAND && !player.getMainHandItem().isEmpty()) return false;
+        if (player.level().isClientSide && player.level().getGameTime() - lastRemovalTick < 4) return false;
 
-        double reach = player.isCreative() ? 5.0 : 4.5;
-        Optional<ChainHitResult> hitOpt = raycastChains(player, reach);
-        if (hitOpt.isEmpty()) return false;
+        double reach = player.getAttributeValue(Attributes.BLOCK_INTERACTION_RANGE);
+        Vec3 rayOrigin = player.getEyePosition(1.0f);
+        Vec3 rayDir = player.getViewVector(1.0f);
 
-        ChainHitResult hit = hitOpt.get();
-        if (!new ItemStack(hit.chainData().sourceItem).is(ModTagRegistry.ROPES)) return false;
+        double bestDist = Double.MAX_VALUE;
+        Object bestEntry = null;
+        Entity bestChainedEntity = null;
+        ChainKnotEntity bestHolder = null;
+        Chainable.ChainData bestLink = null;
 
-        Entity chainedEntity = hit.chainedEntity();
-        if (!(chainedEntity instanceof Chainable chainable)) return false;
-        Entity holder = chainable.getChainHolder(hit.chainData());
-        if (!(holder instanceof ChainKnotEntity holderKnot)) return false;
+        for (Chainable chainable : ChainTracker.getChains(player.level())) {
+            Entity entity = (Entity) chainable;
+            if (entity.distanceTo(player) > Chainable.getMaxChainLength() + reach) continue;
 
-        float t = hit.t();
-        Chainable.ChainData link = hit.chainData();
+            for (Chainable.ChainData cd : chainable.getChainDataSet()) {
+                if (cd.buntings.isEmpty() && cd.banners.isEmpty() && cd.hangings.isEmpty()) continue;
+                Entity h = chainable.getChainHolder(cd);
+                if (!(h instanceof ChainKnotEntity knot)) continue;
 
-        Vec3 srcPos = chainable.getChainPos(1.0f);
-        Vec3 dstPos = holderKnot.getChainPos(1.0f);
-        double rdx = dstPos.x() - srcPos.x();
-        double rdz = dstPos.z() - srcPos.z();
-        float distXZ = (float) Math.sqrt(rdx * rdx + rdz * rdz);
+                Vec3 srcPos = chainable.getChainPos(1.0f);
+                Vec3 dstPos = knot.getChainPos(1.0f);
+                double dist3D = srcPos.distanceTo(dstPos);
+                if (dist3D < 0.01) continue;
+                float slack = cd.getSlack();
 
-        Chainable.ChainData.BuntingEntry nearestBunting = null;
-        float nearestBuntingDist = Float.MAX_VALUE;
-        for (Chainable.ChainData.BuntingEntry e : link.buntings) {
-            float d = Math.abs(e.t() - t);
-            if (d < nearestBuntingDist) {
-                nearestBuntingDist = d;
-                nearestBunting = e;
+                for (Chainable.ChainData.BuntingEntry e : cd.buntings) {
+                    double d = rayPointDist(rayOrigin, rayDir, chainPoint(e.t(), srcPos, dstPos, dist3D, slack), reach);
+                    if (d < 0.5 && d < bestDist) {
+                        bestDist = d;
+                        bestEntry = e;
+                        bestChainedEntity = entity;
+                        bestHolder = knot;
+                        bestLink = cd;
+                    }
+                }
+                for (Chainable.ChainData.BannerEntry e : cd.banners) {
+                    double d = rayPointDist(rayOrigin, rayDir, chainPoint(e.t(), srcPos, dstPos, dist3D, slack), reach);
+                    if (d < 0.5 && d < bestDist) {
+                        bestDist = d;
+                        bestEntry = e;
+                        bestChainedEntity = entity;
+                        bestHolder = knot;
+                        bestLink = cd;
+                    }
+                }
+                for (Chainable.ChainData.HangingEntry e : cd.hangings) {
+                    Vec3 p = chainPoint(e.t(), srcPos, dstPos, dist3D, slack);
+                    double d = rayPointDist(rayOrigin, rayDir, new Vec3(p.x(), p.y() - 0.5, p.z()), reach);
+                    if (d < 0.7 && d < bestDist) {
+                        bestDist = d;
+                        bestEntry = e;
+                        bestChainedEntity = entity;
+                        bestHolder = knot;
+                        bestLink = cd;
+                    }
+                }
             }
         }
 
-        Chainable.ChainData.BannerEntry nearestBanner = null;
-        float nearestBannerDist = Float.MAX_VALUE;
-        for (Chainable.ChainData.BannerEntry e : link.banners) {
-            float d = Math.abs(e.t() - t);
-            if (d < nearestBannerDist) {
-                nearestBannerDist = d;
-                nearestBanner = e;
-            }
+        if (bestEntry == null) return false;
+
+        if (player.level().isClientSide) {
+            lastRemovalTick = player.level().getGameTime();
+            return true;
         }
 
-        Chainable.ChainData.HangingEntry nearestHanging = null;
-        float nearestHangingDist = Float.MAX_VALUE;
-        for (Chainable.ChainData.HangingEntry e : link.hangings) {
-            float d = Math.abs(e.t() - t);
-            if (d < nearestHangingDist) {
-                nearestHangingDist = d;
-                nearestHanging = e;
-            }
-        }
-
-        float buntingWorldDist = nearestBunting != null ? nearestBuntingDist * distXZ : Float.MAX_VALUE;
-        float bannerWorldDist = nearestBanner != null ? nearestBannerDist * distXZ : Float.MAX_VALUE;
-        float hangingWorldDist = nearestHanging != null ? nearestHangingDist * distXZ : Float.MAX_VALUE;
-
-        if (buntingWorldDist > 1.5f && bannerWorldDist > 1.5f && hangingWorldDist > 1.5f) return false;
-
-        if (player.level().isClientSide) return true;
-
-        float minDist = Math.min(buntingWorldDist, Math.min(bannerWorldDist, hangingWorldDist));
-        if (minDist == buntingWorldDist) {
-            link.buntings.remove(nearestBunting);
+        if (bestEntry instanceof Chainable.ChainData.BuntingEntry buntingEntry) {
+            bestLink.buntings.remove(buntingEntry);
             if (!player.isCreative()) {
-                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("supplementaries", "bunting_" + nearestBunting.color().getName()));
+                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("supplementaries", "bunting_" + buntingEntry.color().getName()));
                 if (item != Items.AIR) player.getInventory().add(new ItemStack(item));
             }
-            sendBuntingSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
-        } else if (minDist == bannerWorldDist) {
-            link.banners.remove(nearestBanner);
+            sendBuntingSync(bestChainedEntity, bestHolder, bestLink, (ServerLevel) player.level());
+        } else if (bestEntry instanceof Chainable.ChainData.BannerEntry bannerEntry) {
+            bestLink.banners.remove(bannerEntry);
             if (!player.isCreative()) {
-                ItemStack bannerStack = BannerBlock.byColor(nearestBanner.color()).asItem().getDefaultInstance();
-                if (nearestBanner.data().contains("Pattern")) {
+                ItemStack bannerStack = BannerBlock.byColor(bannerEntry.color()).asItem().getDefaultInstance();
+                if (bannerEntry.data().contains("Pattern")) {
                     var ctx = player.level().registryAccess().createSerializationContext(NbtOps.INSTANCE);
-                    BannerPatternLayers.CODEC.parse(ctx, nearestBanner.data().get("Pattern"))
+                    BannerPatternLayers.CODEC.parse(ctx, bannerEntry.data().get("Pattern"))
                             .result().ifPresent(p -> bannerStack.set(DataComponents.BANNER_PATTERNS, p));
                 }
                 player.getInventory().add(bannerStack);
             }
-            sendBannerSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
-        } else {
-            BlockPos lightPos = HangingLightHelper.computeLightPos(chainedEntity, holderKnot, nearestHanging.t(), link.getSlack());
+            sendBannerSync(bestChainedEntity, bestHolder, bestLink, (ServerLevel) player.level());
+        } else if (bestEntry instanceof Chainable.ChainData.HangingEntry hangingEntry) {
+            BlockPos lightPos = HangingLightHelper.computeLightPos(bestChainedEntity, bestHolder, hangingEntry.t(), bestLink.getSlack());
             if (lightPos != null) HangingLightHelper.remove((ServerLevel) player.level(), lightPos);
-            link.hangings.remove(nearestHanging);
+            bestLink.hangings.remove(hangingEntry);
             if (!player.isCreative()) {
-                Item item = BuiltInRegistries.ITEM.get(nearestHanging.blockId());
+                Item item = BuiltInRegistries.ITEM.get(hangingEntry.blockId());
                 if (item != Items.AIR) player.getInventory().add(new ItemStack(item));
             }
-            sendHangingSync(chainedEntity, holderKnot, link, (ServerLevel) player.level());
+            sendHangingSync(bestChainedEntity, bestHolder, bestLink, (ServerLevel) player.level());
         }
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                SoundEvents.SHEEP_SHEAR, SoundSource.PLAYERS, 0.8f, 0.9f + player.level().random.nextFloat() * 0.2f);
+                SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.6f, 0.9f + player.level().random.nextFloat() * 0.3f);
         return true;
+    }
+
+    private static Vec3 chainPoint(float t, Vec3 src, Vec3 dst, double dist3D, float slack) {
+        return new Vec3(
+                Mth.lerp(t, src.x(), dst.x()),
+                src.y() + MathHelper.drip2(t * dist3D, dist3D, dst.y() - src.y(), slack) - 0.125,
+                Mth.lerp(t, src.z(), dst.z())
+        );
+    }
+
+    private static double rayPointDist(Vec3 origin, Vec3 dir, Vec3 point, double maxDist) {
+        double sc = point.subtract(origin).dot(dir);
+        if (sc < 0 || sc > maxDist) return Double.MAX_VALUE;
+        return origin.add(dir.scale(sc)).distanceTo(point);
     }
 
     private static boolean isSlotOccupied(Chainable.ChainData link, float t, float halfSpacing) {
@@ -228,11 +251,13 @@ public class ChainRaycastHelper {
         float distance3D = (float) Math.sqrt(bdx * bdx + bdy * bdy + bdz * bdz);
         float minTSpacing = distance3D > 0 ? 1.0f / distance3D : 1.0f;
 
+        float minT = minTSpacing;
+        float maxT = 1.0f - minTSpacing;
+        if (minT > maxT) return false;
+
         float t = hit.t();
-        if (minTSpacing < 1.0f) {
-            t = Math.round(t / minTSpacing) * minTSpacing;
-            t = Math.max(0.0f, Math.min(1.0f, t));
-        }
+        t = Math.round(t / minTSpacing) * minTSpacing;
+        t = Math.max(minT, Math.min(maxT, t));
 
         Chainable.ChainData link = hit.chainData();
         if (isSlotOccupied(link, t, minTSpacing * 0.5f)) return false;
@@ -288,11 +313,13 @@ public class ChainRaycastHelper {
         float distance3D = (float) Math.sqrt(hdx * hdx + hdy * hdy + hdz * hdz);
         float minTSpacing = distance3D > 0 ? 1.0f / distance3D : 1.0f;
 
+        float minT = minTSpacing;
+        float maxT = 1.0f - minTSpacing;
+        if (minT > maxT) return false;
+
         float t = hit.t();
-        if (minTSpacing < 1.0f) {
-            t = Math.round(t / minTSpacing) * minTSpacing;
-            t = Math.max(0.0f, Math.min(1.0f, t));
-        }
+        t = Math.round(t / minTSpacing) * minTSpacing;
+        t = Math.max(minT, Math.min(maxT, t));
 
         Chainable.ChainData link = hit.chainData();
         if (isSlotOccupied(link, t, minTSpacing * 0.5f)) return false;
@@ -338,7 +365,7 @@ public class ChainRaycastHelper {
      */
     public static boolean tryAdjustSlack(Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (!stack.is(Items.SHEARS)) return false;
+        if (!stack.is(ModTagRegistry.SHEAR_TOOLS)) return false;
 
         double reachDistance = player.isCreative() ? 5.0 : 4.5;
 
@@ -397,6 +424,13 @@ public class ChainRaycastHelper {
      * Casts a ray from the player's camera to find the closest chain curve.
      */
     public static Optional<ChainHitResult> raycastChains(Player player, double reach) {
+        return raycastChains(player, reach, 0.25);
+    }
+
+    /**
+     * Casts a ray from the player's camera to find the closest chain curve, with a configurable hit tolerance.
+     */
+    public static Optional<ChainHitResult> raycastChains(Player player, double reach, double tolerance) {
         Vec3 rayOrigin = player.getEyePosition(1.0f);
         Vec3 rayDir = player.getViewVector(1.0f);
 
@@ -426,7 +460,7 @@ public class ChainRaycastHelper {
                 double maxDroop = Math.abs(MathHelper.drip2(distance / 2.0, distance, dstPos.y() - srcPos.y(), chainData.getSlack()) - (dstPos.y() - srcPos.y()) / 2.0);
 
                 double distToStraightLine = distanceRaySegment(rayOrigin, rayDir, srcPos, dstPos, reach);
-                if (distToStraightLine > maxDroop + 0.5) {
+                if (distToStraightLine > maxDroop + tolerance + 0.5) {
                     continue;
                 }
 
@@ -444,7 +478,7 @@ public class ChainRaycastHelper {
                     double distToRay = rayResult[0];
                     double tc = rayResult[1];
 
-                    if (distToRay < 0.25) {
+                    if (distToRay < tolerance) {
                         double distanceToPlayer = rayOrigin.distanceTo(currentPoint);
                         if (distanceToPlayer < closestDistance) {
                             closestDistance = distanceToPlayer;
@@ -464,7 +498,7 @@ public class ChainRaycastHelper {
      */
     public static boolean tryBreakChain(Player player) {
         ItemStack stack = player.getMainHandItem();
-        if (!stack.is(Items.SHEARS)) return false;
+        if (!stack.is(ModTagRegistry.SHEAR_TOOLS)) return false;
 
         double reachDistance = player.isCreative() ? 5.0 : 4.5;
 
@@ -488,7 +522,7 @@ public class ChainRaycastHelper {
     }
 
     /**
-     * Calculates the shortest distance between a Ray and a 3D Line Segment.
+     * Calculates the shortest distance between a ray and a 3D line segment.
      */
     private static double distanceRaySegment(Vec3 rayOrigin, Vec3 rayDir, Vec3 p0, Vec3 p1, double maxReach) {
         return distanceRaySegmentEx(rayOrigin, rayDir, p0, p1, maxReach)[0];

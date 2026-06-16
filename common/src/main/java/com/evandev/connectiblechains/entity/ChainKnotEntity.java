@@ -142,7 +142,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
                 if (!player.isCreative()) handStack.shrink(1);
                 return InteractionResult.SUCCESS;
             }
-            if (handStack.is(Items.SHEARS)) return InteractionResult.SUCCESS;
+            if (handStack.is(ModTagRegistry.SHEAR_TOOLS)) return InteractionResult.SUCCESS;
             return InteractionResult.PASS;
         }
 
@@ -188,7 +188,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
                 return InteractionResult.SUCCESS;
             }
 
-            if (handStack.is(Items.SHEARS)) {
+            if (handStack.is(ModTagRegistry.SHEAR_TOOLS)) {
                 if (player.isCreative()) detachAllChainsWithoutDrop();
                 else detachAllChains();
                 this.remove(RemovalReason.DISCARDED);
