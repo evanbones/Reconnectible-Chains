@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed modded shears not being recognized for chain/rope interactions.
 - Fixed covering lanterns with blocks causing their light sources to disappear.
 - Items can no longer be placed at the very ends of catenaries.
+- Fixed issue with hanging items being invisible on first world load.
 
 ## [2.1.0] - 2026-06-14
 
