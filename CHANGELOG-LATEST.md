@@ -1,12 +1,7 @@
 ### Added
 
-- Added default support for Architect's Palette chains.
-
-### Changed
-
-- Chain collisions are now disabled by default.
-- Increased max length for Chains to 512 for the utterly deranged.
-
-### Fixed
-
-- Fixed more edge-case bugs with chain knot block updates.
+- Added a `hangable_items` tag for blocks that can hang off chains.
+- `/connectchain` now takes an argument to place different chain types.
+- Lanterns can now be placed on chains.
+    - This also includes Quark Paper Lanterns by default.
+    - To add additional modded lanterns, just add them to the `hangable_items` tag.
