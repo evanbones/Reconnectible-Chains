@@ -5,6 +5,7 @@ import com.evandev.connectiblechains.networking.packet.BannerSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainAttachS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainBreakC2SPacket;
+import com.evandev.connectiblechains.networking.packet.DecorationRemoveC2SPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ConfigSyncPayload;
 import com.evandev.connectiblechains.networking.packet.HangingSyncS2CPacket;
@@ -40,6 +41,19 @@ public class ForgeNetworkHelper implements INetworkHelper {
                         ServerPlayer player = ctx.get().getSender();
                         if (player != null) {
                             ChainBreakC2SPacket.handle(msg, player);
+                        }
+                    });
+                    ctx.get().setPacketHandled(true);
+                }
+        );
+        CHANNEL.registerMessage(packetId++, DecorationRemoveC2SPacket.class,
+                DecorationRemoveC2SPacket::write,
+                DecorationRemoveC2SPacket::new,
+                (msg, ctx) -> {
+                    ctx.get().enqueueWork(() -> {
+                        ServerPlayer player = ctx.get().getSender();
+                        if (player != null) {
+                            DecorationRemoveC2SPacket.handle(msg, player);
                         }
                     });
                     ctx.get().setPacketHandled(true);

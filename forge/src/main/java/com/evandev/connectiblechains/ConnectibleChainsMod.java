@@ -8,6 +8,7 @@ import com.evandev.connectiblechains.command.ConnectChainCommand;
 import com.evandev.connectiblechains.entity.ModEntityTypes;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.ChainBreakC2SPacket;
+import com.evandev.connectiblechains.networking.packet.DecorationRemoveC2SPacket;
 import com.evandev.connectiblechains.platform.ForgeNetworkHelper;
 import com.evandev.connectiblechains.platform.ForgeRegistryHelper;
 import com.evandev.connectiblechains.util.ChainRaycastHelper;
@@ -54,6 +55,15 @@ public class ConnectibleChainsMod {
     }
 
     private void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (event.getLevel().isClientSide()) {
+            if (ChainRaycastHelper.tryRemoveDecoration(event.getEntity(), event.getHand())) {
+                ForgeNetworkHelper.CHANNEL.sendToServer(new DecorationRemoveC2SPacket());
+                event.getEntity().swing(event.getHand());
+                event.setCanceled(true);
+                event.setCancellationResult(InteractionResult.SUCCESS);
+            }
+            return;
+        }
         InteractionResult result = ChainItemCallbacks.chainUseEvent(event.getEntity(), event.getLevel(), event.getHand(), event.getHitVec());
         if (result.consumesAction()) {
             event.setCanceled(true);
@@ -71,7 +81,6 @@ public class ConnectibleChainsMod {
         if (ChainRaycastHelper.tryPlaceBunting(event.getEntity(), event.getHand())
                 || ChainRaycastHelper.tryPlaceBanner(event.getEntity(), event.getHand())
                 || ChainRaycastHelper.tryPlaceHanging(event.getEntity(), event.getHand())
-                || ChainRaycastHelper.tryRemoveDecoration(event.getEntity(), event.getHand())
                 || ChainRaycastHelper.tryAdjustSlack(event.getEntity(), event.getHand())) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);
@@ -79,13 +88,9 @@ public class ConnectibleChainsMod {
     }
 
     private void onRightClickEmpty(PlayerInteractEvent.RightClickEmpty event) {
-        if (ChainRaycastHelper.tryPlaceBunting(event.getEntity(), event.getHand())
-                || ChainRaycastHelper.tryPlaceBanner(event.getEntity(), event.getHand())
-                || ChainRaycastHelper.tryPlaceHanging(event.getEntity(), event.getHand())
-                || ChainRaycastHelper.tryRemoveDecoration(event.getEntity(), event.getHand())
-                || ChainRaycastHelper.tryAdjustSlack(event.getEntity(), event.getHand())) {
-            event.setCanceled(true);
-            event.setCancellationResult(InteractionResult.SUCCESS);
+        if (ChainRaycastHelper.tryRemoveDecoration(event.getEntity(), event.getHand())) {
+            ForgeNetworkHelper.CHANNEL.sendToServer(new DecorationRemoveC2SPacket());
+            event.getEntity().swing(event.getHand());
         }
     }
 

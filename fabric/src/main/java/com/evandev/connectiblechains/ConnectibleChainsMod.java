@@ -3,6 +3,7 @@ package com.evandev.connectiblechains;
 import com.evandev.connectiblechains.command.ConnectChainCommand;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.ChainBreakC2SPacket;
+import com.evandev.connectiblechains.networking.packet.DecorationRemoveC2SPacket;
 import com.evandev.connectiblechains.util.ChainRaycastHelper;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -31,9 +32,6 @@ public class ConnectibleChainsMod implements ModInitializer {
             if (ChainRaycastHelper.tryPlaceHanging(player, hand)) {
                 return InteractionResultHolder.success(player.getItemInHand(hand));
             }
-            if (ChainRaycastHelper.tryRemoveDecoration(player, hand)) {
-                return InteractionResultHolder.success(player.getItemInHand(hand));
-            }
             if (ChainRaycastHelper.tryAdjustSlack(player, hand)) {
                 return InteractionResultHolder.success(player.getItemInHand(hand));
             }
@@ -44,6 +42,13 @@ public class ConnectibleChainsMod implements ModInitializer {
                 (server, player, handler, buf, responseSender) -> {
                     server.execute(() -> {
                         ChainBreakC2SPacket.handle(new ChainBreakC2SPacket(), player);
+                    });
+                }
+        );
+        ServerPlayNetworking.registerGlobalReceiver(new ResourceLocation(CommonClass.MODID, "c2s_decoration_remove"),
+                (server, player, handler, buf, responseSender) -> {
+                    server.execute(() -> {
+                        DecorationRemoveC2SPacket.handle(new DecorationRemoveC2SPacket(), player);
                     });
                 }
         );
