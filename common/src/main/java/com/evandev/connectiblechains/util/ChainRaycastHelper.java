@@ -260,8 +260,19 @@ public class ChainRaycastHelper {
         if (bestEntry instanceof Chainable.ChainData.BuntingEntry buntingEntry) {
             bestLink.buntings.remove(buntingEntry);
             if (!player.isCreative()) {
-                Item item = BuiltInRegistries.ITEM.get(new ResourceLocation("supplementaries", "bunting_" + buntingEntry.color().getName()));
-                if (item != Items.AIR) player.getInventory().add(new ItemStack(item));
+                ResourceLocation coloredId = new ResourceLocation("supplementaries", "bunting_" + buntingEntry.color().getName());
+                Item buntingItem = BuiltInRegistries.ITEM.get(coloredId);
+
+                if (buntingItem != Items.AIR) {
+                    player.getInventory().add(new ItemStack(buntingItem));
+                } else {
+                    Item singleBuntingItem = BuiltInRegistries.ITEM.get(new ResourceLocation("supplementaries", "bunting"));
+                    if (singleBuntingItem != Items.AIR) {
+                        ItemStack buntingStack = new ItemStack(singleBuntingItem);
+                        buntingStack.getOrCreateTag().putString("Color", buntingEntry.color().getName());
+                        player.getInventory().add(buntingStack);
+                    }
+                }
             }
             sendBuntingSync(bestChainedEntity, bestHolder, bestLink, (ServerLevel) player.level());
         } else if (bestEntry instanceof Chainable.ChainData.BannerEntry bannerEntry) {

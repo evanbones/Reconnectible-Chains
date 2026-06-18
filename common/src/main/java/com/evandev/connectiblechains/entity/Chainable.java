@@ -164,9 +164,18 @@ public interface Chainable {
                 if (dropItem) {
                     entity.spawnAtLocation(chainData.sourceItem);
                     for (ChainData.BuntingEntry entry : chainData.buntings) {
-                        Item buntingItem = BuiltInRegistries.ITEM.get(new ResourceLocation("supplementaries", "bunting_" + entry.color().getName()));
+                        ResourceLocation coloredId = new ResourceLocation("supplementaries", "bunting_" + entry.color().getName());
+                        Item buntingItem = BuiltInRegistries.ITEM.get(coloredId);
+
                         if (buntingItem != Items.AIR) {
                             entity.spawnAtLocation(buntingItem);
+                        } else {
+                            Item singleBuntingItem = BuiltInRegistries.ITEM.get(new ResourceLocation("supplementaries", "bunting"));
+                            if (singleBuntingItem != Items.AIR) {
+                                ItemStack buntingStack = new ItemStack(singleBuntingItem);
+                                buntingStack.getOrCreateTag().putString("Color", entry.color().getName());
+                                entity.spawnAtLocation(buntingStack);
+                            }
                         }
                     }
                     for (ChainData.BannerEntry entry : chainData.banners) {
