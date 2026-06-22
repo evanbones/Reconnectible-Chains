@@ -5,11 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.2.1] - 2026-06-18
+## [2.2.2] - 2026-06-22
 
 ### Fixed
 
-- Fixed Supplementaries buntings not dropping when removing them.
+- Improved hanging lantern visuals.
+
+## [2.2.1] - 2026-06-16
+
+### Fixed
+
+- Fixed hanging catenary items sometimes being invisible.
 
 ## [2.2.0] - 2026-06-16
 
@@ -26,7 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed modded shears not being recognized for chain/rope interactions.
 - Fixed covering lanterns with blocks causing their light sources to disappear.
 - Items can no longer be placed at the very ends of catenaries.
-- Fixed issue with hanging items being invisible on first world load.
 
 ## [2.1.0] - 2026-06-14
 
@@ -37,6 +42,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Lanterns can now be placed on chains.
     - This also includes Quark Paper Lanterns by default.
     - To add additional modded lanterns, just add them to the `hangable_items` tag.
+
+## [2.0.0] - 2026-06-12
+
+### Added
+
+- Supplementaries Buntings can now be placed on any Ropes!
+- Banners can now be placed on ropes.
+- Added default support for Caverns and Chasms chains.
+- Added Vines to the default chain connectible tag.
+- Added support for texture biome tinting.
+- Added an indication that a chain is reaching a maximum length (configurable).
+
+### Changed
+
+- Pressing shift will now bypass chain/rope knot placement.
+- Tweaked sounds for shearing.
 
 ## [1.2.5] - 2026-03-04
 

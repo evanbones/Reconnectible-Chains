@@ -328,9 +328,13 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             float x = t * distanceXZ;
             float y = (float) MathHelper.drip2(x * wrongDistanceFactor, distance, chainVec.y(), slack);
 
-            int blockLight = (int) Mth.lerp(t, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight);
-            int skyLight = (int) Mth.lerp(t, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight);
-            int light = LightTexture.pack(blockLight, skyLight);
+            double worldX = Mth.lerp(t, chainData.startPos.x(), chainData.endPos.x());
+            double worldY = chainData.startPos.y() + MathHelper.drip2(t * distance, distance, chainData.endPos.y() - chainData.startPos.y(), slack);
+            double worldZ = Mth.lerp(t, chainData.startPos.z(), chainData.endPos.z());
+            BlockPos pos = BlockPos.containing(worldX, worldY - 1.0, worldZ);
+
+            int blockLight = mc.level.getBrightness(LightLayer.BLOCK, pos);
+            int skyLight = mc.level.getBrightness(LightLayer.SKY, pos);
 
             Block block = BuiltInRegistries.BLOCK.get(entry.blockId());
             if (block == Blocks.AIR) continue;
@@ -340,6 +344,13 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             if (blockState.hasProperty(BlockStateProperties.HANGING)) {
                 blockState = blockState.setValue(BlockStateProperties.HANGING, true);
             }
+
+            int emission = blockState.getLightEmission();
+            if (emission > 0) {
+                blockLight = Math.max(blockLight, emission);
+            }
+
+            int light = LightTexture.pack(blockLight, skyLight);
 
             matrices.pushPose();
             if (blockState.getRenderShape() == RenderShape.MODEL) {
