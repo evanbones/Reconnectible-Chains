@@ -259,11 +259,32 @@ public interface Chainable {
             if (chainHolder != null) {
                 if (entity.isRemoved() || chainHolder.isRemoved()) {
                     Entity.RemovalReason reason = entity.isRemoved() ? entity.getRemovalReason() : chainHolder.getRemovalReason();
-                    if (reason != null && reason.shouldDestroy()) {
-                        if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-                            entity.detachChain(chainData);
+                    if (reason != null) {
+                        if (reason.shouldDestroy()) {
+                            if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+                                entity.detachChain(chainData);
+                            } else {
+                                entity.detachChainWithoutDrop(chainData);
+                            }
+                            continue;
                         } else {
-                            entity.detachChainWithoutDrop(chainData);
+                            // Convert it to unresolved ChainData so it can be resolved again when loaded/present.
+                            Either<UUID, BlockPos> unresolved;
+                            if (chainHolder instanceof ChainKnotEntity knot) {
+                                unresolved = Either.right(knot.getPos().subtract(entity.getPos()));
+                            } else {
+                                unresolved = Either.left(chainHolder.getUUID());
+                            }
+                            ChainData unresolvedChainData = new ChainData(unresolved, chainData.sourceItem);
+                            unresolvedChainData.customSlack = chainData.customSlack;
+                            unresolvedChainData.buntings.addAll(chainData.buntings);
+                            unresolvedChainData.banners.addAll(chainData.banners);
+                            unresolvedChainData.hangings.addAll(chainData.hangings);
+                            
+                            entity.replaceChainData(chainData, unresolvedChainData);
+                            ChainCollisionEntity.destroyCollision(level, chainData);
+                            HangingLightHelper.removeAllForChain(level, entity, chainHolder, chainData);
+                            continue;
                         }
                     }
                 }

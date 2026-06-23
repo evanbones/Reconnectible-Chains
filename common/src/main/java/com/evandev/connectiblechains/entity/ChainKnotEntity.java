@@ -108,7 +108,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
     @Override
     public void remove(@NotNull RemovalReason reason) {
-        if (!this.level().isClientSide) {
+        if (!this.level().isClientSide && reason.shouldDestroy()) {
             this.detachAllChains();
         }
 

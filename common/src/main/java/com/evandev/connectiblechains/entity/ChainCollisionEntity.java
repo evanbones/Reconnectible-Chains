@@ -150,6 +150,21 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
         if (level().isClientSide) return;
         if (this.link == null || !this.link.isAlive()) {
             this.discard();
+            return;
+        }
+        if (this.chainedEntity == null || this.chainedEntity.isRemoved()) {
+            this.discard();
+            return;
+        }
+        if (this.chainedEntity instanceof Chainable chainable) {
+            if (!chainable.getChainDataSet().contains(this.link)) {
+                this.discard();
+                return;
+            }
+            Entity chainHolder = chainable.getChainHolder(this.link);
+            if (chainHolder == null || chainHolder.isRemoved()) {
+                this.discard();
+            }
         }
     }
 
