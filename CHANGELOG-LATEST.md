@@ -1,3 +1,3 @@
 ### Fixed
 
-- Improved hanging lantern visuals.
+- Added additional checks to discard stale chain collision entities.

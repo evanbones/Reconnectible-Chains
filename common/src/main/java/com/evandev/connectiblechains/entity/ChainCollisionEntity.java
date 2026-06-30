@@ -48,9 +48,12 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
     }
 
     public static <E extends Entity & Chainable> void createCollision(E chainedEntity, Chainable.ChainData chainData) {
-        if (chainedEntity.level().isClientSide()) return;
+        if (chainedEntity.level().isClientSide() || chainedEntity.isRemoved()) return;
 
         ServerLevel serverWorld = (ServerLevel) chainedEntity.level();
+
+        Entity chainHolder = chainedEntity.getChainHolder(chainData);
+        if (chainHolder == null || chainHolder.isRemoved()) return;
 
         if (!CommonClass.runtimeConfig.isCollisionsEnabled()) {
             destroyCollision(serverWorld, chainData);
@@ -60,9 +63,6 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
         chainData.collisionStorage.removeIf(id -> serverWorld.getEntity(id) == null);
 
         if (!chainData.collisionStorage.isEmpty()) return;
-
-        Entity chainHolder = chainedEntity.getChainHolder(chainData);
-        if (chainHolder == null) return;
 
         double distance = chainedEntity.distanceTo(chainHolder);
         double step = COLLIDER_SPACING * Math.sqrt(Math.pow(ModEntityTypes.CHAIN_COLLISION.get().getWidth(), 2) * 2) / distance;
@@ -155,8 +155,17 @@ public class ChainCollisionEntity extends Entity implements ChainLinkEntity {
     public void tick() {
         super.tick();
         if (level().isClientSide) return;
-        if (this.link == null || !this.link.isAlive()) {
+
+        if (this.link == null || !this.link.isAlive() || this.chainedEntity == null || this.chainedEntity.isRemoved()) {
             this.discard();
+            return;
+        }
+
+        if (this.chainedEntity instanceof Chainable chainable) {
+            Entity chainHolder = chainable.getChainHolder(this.link);
+            if (chainHolder == null || chainHolder.isRemoved()) {
+                this.discard();
+            }
         }
     }
 
