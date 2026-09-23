@@ -1,6 +1,7 @@
 package com.evandev.connectiblechains.entity;
 
 import com.evandev.connectiblechains.CommonClass;
+import com.evandev.connectiblechains.compat.sable.SableHelper;
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.*;
 import com.evandev.connectiblechains.platform.Services;
@@ -352,13 +353,15 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
             Entity entity = chainData.getResolvedHolder();
             if (entity == null) continue;
 
-            result = result.minmax(entity.getBoundingBox());
+            Vec3 holderPos = SableHelper.getHolderPosInEntitySpace(this.level(), this, entity);
+            AABB holderBox = entity.getBoundingBox().move(holderPos.subtract(entity.position()));
+            result = result.minmax(holderBox);
 
-            double distance = this.position().distanceTo(entity.position());
-            double dy = entity.getY() - this.getY();
+            double distance = this.position().distanceTo(holderPos);
+            double dy = holderPos.y() - this.getY();
             double sag = Math.abs(MathHelper.drip2(distance / 2.0, distance, dy, chainData.getSlack()));
 
-            double minY = Math.min(this.getY(), entity.getY()) - sag - 1.0;
+            double minY = Math.min(this.getY(), holderPos.y()) - sag - 1.0;
             result = result.minmax(new AABB(this.getX(), minY, this.getZ(), this.getX(), minY, this.getZ()));
         }
         return result.inflate(1.0);
@@ -387,6 +390,11 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
                 Math.min(x, tipX) - spreadX, Math.min(y, tipY) - spreadY, Math.min(z, tipZ) - spreadZ,
                 Math.max(x, tipX) + spreadX, Math.max(y, tipY) + spreadY, Math.max(z, tipZ) + spreadZ
         );
+    }
+
+    @Override
+    protected AABB calculateSupportBox() {
+        return new AABB(this.blockPosition());
     }
 
     @Override

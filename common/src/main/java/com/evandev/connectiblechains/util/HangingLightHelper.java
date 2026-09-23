@@ -1,7 +1,9 @@
 package com.evandev.connectiblechains.util;
 
+import com.evandev.connectiblechains.compat.sable.SableHelper;
 import com.evandev.connectiblechains.entity.ChainKnotEntity;
 import com.evandev.connectiblechains.entity.Chainable;
+import dev.ryanhcode.sable.companion.SubLevelAccess;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
@@ -23,7 +25,14 @@ public class HangingLightHelper {
         if (!(dst instanceof ChainKnotEntity dstKnot)) return null;
         Vec3 srcPos = srcKnot.getChainPos(1.0f);
         Vec3 dstPos = dstKnot.getChainPos(1.0f);
-        if (srcPos.distanceTo(dstPos) < 0.01) return null;
+        SubLevelAccess srcSubLevel = SableHelper.getContaining(src.level(), srcPos);
+        SubLevelAccess dstSubLevel = SableHelper.getContaining(dst.level(), dstPos);
+        if (srcSubLevel != dstSubLevel) {
+            srcPos = SableHelper.projectOutOfSubLevel(src.level(), srcPos);
+            dstPos = SableHelper.projectOutOfSubLevel(dst.level(), dstPos);
+        }
+        double dist = srcPos.distanceTo(dstPos);
+        if (dist < 0.01 || dist > 64.0) return null;
 
         Vec3 anchor = HangingBlockPlacement.anchor(srcPos, dstPos, t, slack);
         return BlockPos.containing(anchor.x(), anchor.y() - 1.0, anchor.z());

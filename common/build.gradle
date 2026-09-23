@@ -27,6 +27,9 @@ dependencies {
     // Supplementaries
     compileOnly "maven.modrinth:supplementaries:${supplementaries_version_neoforge}"
 
+    // Sable Companion
+    compileOnly "dev.ryanhcode.sable-companion:sable-companion-common-1.21.1:${sable_companion_version}"
+
     compileOnly group: 'org.spongepowered', name: 'mixin', version: '0.8.5'
     compileOnly group: 'org.ow2.asm', name: 'asm-tree', version: '9.6'
     compileOnly group: 'io.github.llamalad7', name: 'mixinextras-common', version: '0.3.5'

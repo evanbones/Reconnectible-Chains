@@ -3,6 +3,7 @@ package com.evandev.connectiblechains.client.render.entity;
 import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.client.ClientInitializer;
 import com.evandev.connectiblechains.client.SupplementariesCompat;
+import com.evandev.connectiblechains.compat.sable.SableHelper;
 import com.evandev.connectiblechains.client.render.entity.catenary.CatenaryRenderer;
 import com.evandev.connectiblechains.client.render.entity.model.ChainKnotEntityModel;
 import com.evandev.connectiblechains.client.render.entity.state.ChainKnotEntityRenderState;
@@ -125,7 +126,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
     }
 
     public void render(ChainKnotEntity entity, ChainKnotEntityRenderState state, PoseStack matrices, MultiBufferSource vertexConsumers, int light, float tickDelta) {
-        double distanceToCameraSqr = this.entityRenderDispatcher.distanceToSqr(entity);
+        double distanceToCameraSqr = SableHelper.distanceToCameraSqr(entity, this.entityRenderDispatcher);
 
         if (distanceToCameraSqr <= 4096.0D) {
             matrices.pushPose();
@@ -390,18 +391,19 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
             } else {
                 dstPos = chainHolder.getRopeHoldPosition(tickDelta);
             }
+            dstPos = SableHelper.transformHolderPosForRenderer(level, entity, chainHolder, dstPos, tickDelta);
 
-            BlockPos blockPosOfStart = BlockPos.containing(entity.getLightProbePosition(tickDelta));
-            BlockPos blockPosOfEnd = BlockPos.containing(chainHolder.getLightProbePosition(tickDelta));
+            int startPackedLight = this.getPackedLightCoords(entity, tickDelta);
+            int endPackedLight = this.entityRenderDispatcher.getPackedLightCoords(chainHolder, tickDelta);
 
             ChainKnotEntityRenderState.ChainData renderChainData = state.claim();
             renderChainData.offset = srcPos.subtract(entityPos);
             renderChainData.startPos = srcPos;
             renderChainData.endPos = dstPos;
-            renderChainData.chainedEntityBlockLight = level.getBrightness(LightLayer.BLOCK, blockPosOfStart);
-            renderChainData.chainHolderBlockLight = level.getBrightness(LightLayer.BLOCK, blockPosOfEnd);
-            renderChainData.chainedEntitySkyLight = level.getBrightness(LightLayer.SKY, blockPosOfStart);
-            renderChainData.chainHolderSkyLight = level.getBrightness(LightLayer.SKY, blockPosOfEnd);
+            renderChainData.chainedEntityBlockLight = LightTexture.block(startPackedLight);
+            renderChainData.chainHolderBlockLight = LightTexture.block(endPackedLight);
+            renderChainData.chainedEntitySkyLight = LightTexture.sky(startPackedLight);
+            renderChainData.chainHolderSkyLight = LightTexture.sky(endPackedLight);
             renderChainData.sourceItem = chainData.sourceItem;
             renderChainData.tintColor = computeChainTintColor(level, chainData.sourceItem, srcPos, dstPos);
             renderChainData.useBaked = chainHolder instanceof HangingEntity;

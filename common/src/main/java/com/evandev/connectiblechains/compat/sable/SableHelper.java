@@ -1,0 +1,86 @@
+package com.evandev.connectiblechains.compat.sable;
+
+import dev.ryanhcode.sable.companion.ClientSubLevelAccess;
+import dev.ryanhcode.sable.companion.SableCompanion;
+import dev.ryanhcode.sable.companion.SubLevelAccess;
+import dev.ryanhcode.sable.companion.math.BoundingBox3d;
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
+
+public final class SableHelper {
+
+    private SableHelper() {
+    }
+
+    public static double distanceToCameraSqr(Entity entity, EntityRenderDispatcher dispatcher) {
+        Vec3 camPos = dispatcher.camera.getPosition();
+        return SableCompanion.INSTANCE.distanceSquaredWithSubLevels(entity.level(), camPos, entity.position());
+    }
+
+    public static Vec3 transformHolderPosForRenderer(Level level, Entity entity, Entity chainHolder, Vec3 dstPos, float tickDelta) {
+        SubLevelAccess entitySubLevel = SableCompanion.INSTANCE.getContaining(entity);
+        SubLevelAccess holderSubLevel = SableCompanion.INSTANCE.getContaining(level, dstPos);
+        if (entitySubLevel == holderSubLevel) {
+            return dstPos;
+        }
+
+        Vec3 globalPos = dstPos;
+        if (holderSubLevel instanceof ClientSubLevelAccess clientHolder) {
+            globalPos = clientHolder.renderPose(tickDelta).transformPosition(globalPos);
+        } else if (holderSubLevel != null) {
+            globalPos = holderSubLevel.logicalPose().transformPosition(globalPos);
+        }
+
+        if (entitySubLevel instanceof ClientSubLevelAccess clientEntity) {
+            return clientEntity.renderPose(tickDelta).transformPositionInverse(globalPos);
+        } else if (entitySubLevel != null) {
+            return entitySubLevel.logicalPose().transformPositionInverse(globalPos);
+        }
+
+        return globalPos;
+    }
+
+    public static Vec3 getHolderPosInEntitySpace(Level level, Entity entity, Entity chainHolder) {
+        SubLevelAccess entitySubLevel = SableCompanion.INSTANCE.getContaining(entity);
+        SubLevelAccess holderSubLevel = SableCompanion.INSTANCE.getContaining(chainHolder);
+        if (entitySubLevel == holderSubLevel) {
+            return chainHolder.position();
+        }
+
+        Vec3 globalPos = chainHolder.position();
+        if (holderSubLevel != null) {
+            globalPos = holderSubLevel.logicalPose().transformPosition(globalPos);
+        }
+
+        if (entitySubLevel != null) {
+            return entitySubLevel.logicalPose().transformPositionInverse(globalPos);
+        }
+
+        return globalPos;
+    }
+
+    public static Iterable<? extends SubLevelAccess> getAllIntersecting(Level level, AABB aabb) {
+        return SableCompanion.INSTANCE.getAllIntersecting(level, new BoundingBox3d(aabb));
+    }
+
+    public static AABB toLocalAABB(SubLevelAccess subLevel, AABB aabb) {
+        return new BoundingBox3d(aabb).transformInverse(subLevel.logicalPose()).toMojang();
+    }
+
+    public static AABB toGlobalAABB(SubLevelAccess subLevel, AABB aabb) {
+        return new BoundingBox3d(aabb).transform(subLevel.logicalPose()).toMojang();
+    }
+
+    @Nullable
+    public static SubLevelAccess getContaining(Level level, Vec3 pos) {
+        return SableCompanion.INSTANCE.getContaining(level, pos);
+    }
+
+    public static Vec3 projectOutOfSubLevel(Level level, Vec3 pos) {
+        return SableCompanion.INSTANCE.projectOutOfSubLevel(level, (net.minecraft.core.Position) pos);
+    }
+}

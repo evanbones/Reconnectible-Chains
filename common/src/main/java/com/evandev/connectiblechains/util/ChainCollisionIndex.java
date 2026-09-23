@@ -1,8 +1,10 @@
 package com.evandev.connectiblechains.util;
 
 import com.evandev.connectiblechains.CommonClass;
+import com.evandev.connectiblechains.compat.sable.SableHelper;
 import com.evandev.connectiblechains.entity.ChainKnotEntity;
 import com.evandev.connectiblechains.entity.Chainable;
+import dev.ryanhcode.sable.companion.SubLevelAccess;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -11,6 +13,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
@@ -49,6 +52,13 @@ public final class ChainCollisionIndex {
 
         Vec3 src = chainAnchor(owner);
         Vec3 dst = chainAnchor(holder);
+
+        SubLevelAccess srcSubLevel = SableHelper.getContaining(level, src);
+        SubLevelAccess dstSubLevel = SableHelper.getContaining(level, dst);
+        if (srcSubLevel != dstSubLevel) {
+            src = SableHelper.projectOutOfSubLevel(level, src);
+            dst = SableHelper.projectOutOfSubLevel(level, dst);
+        }
         float slack = chainData.getSlack();
         int hangingsHash = hangingsHash(chainData);
 
@@ -107,29 +117,76 @@ public final class ChainCollisionIndex {
         int minChunkZ = SectionPos.blockToSectionCoord(Mth.floor(area.minZ));
         int maxChunkZ = SectionPos.blockToSectionCoord(Mth.floor(area.maxZ));
 
-        for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
-            for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
-                CopyOnWriteArrayList<Entry> bucket = index.buckets.get(ChunkPos.asLong(chunkX, chunkZ));
-                if (bucket == null) continue;
+        long diffX = (long) maxChunkX - minChunkX + 1;
+        long diffZ = (long) maxChunkZ - minChunkZ + 1;
 
-                for (Entry entry : bucket) {
-                    if (entry.isStale(now)) {
-                        index.discard(entry);
-                        continue;
-                    }
+        if (diffX > 0 && diffZ > 0 && diffX <= 32 && diffZ <= 32 && diffX * diffZ <= 512) {
+            for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+                for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+                    CopyOnWriteArrayList<Entry> bucket = index.buckets.get(ChunkPos.asLong(chunkX, chunkZ));
+                    if (bucket == null) continue;
 
-                    ChainShapeBaker.ChainShape shape = entry.shape;
-                    if (!shape.bounds().intersects(area)) continue;
+                    for (Entry entry : bucket) {
+                        if (entry.isStale(now)) {
+                            index.discard(entry);
+                            continue;
+                        }
 
-                    AABB[] boxes = shape.boxes();
-                    for (int i = 0; i < boxes.length; i++) {
-                        if (!boxes[i].intersects(area)) continue;
-                        if (collected == null) collected = new ArrayList<>();
-                        collected.add(shape.shapes()[i]);
+                        ChainShapeBaker.ChainShape shape = entry.shape;
+                        if (!shape.bounds().intersects(area)) continue;
+
+                        AABB[] boxes = shape.boxes();
+                        for (int i = 0; i < boxes.length; i++) {
+                            if (!boxes[i].intersects(area)) continue;
+                            if (collected == null) collected = new ArrayList<>();
+                            collected.add(shape.shapes()[i]);
+                        }
                     }
                 }
             }
         }
+
+        for (SubLevelAccess subLevel : SableHelper.getAllIntersecting(level, area)) {
+            AABB localArea = SableHelper.toLocalAABB(subLevel, area);
+            int subMinChunkX = SectionPos.blockToSectionCoord(Mth.floor(localArea.minX));
+            int subMaxChunkX = SectionPos.blockToSectionCoord(Mth.floor(localArea.maxX));
+            int subMinChunkZ = SectionPos.blockToSectionCoord(Mth.floor(localArea.minZ));
+            int subMaxChunkZ = SectionPos.blockToSectionCoord(Mth.floor(localArea.maxZ));
+
+            long subDiffX = (long) subMaxChunkX - subMinChunkX + 1;
+            long subDiffZ = (long) subMaxChunkZ - subMinChunkZ + 1;
+            if (subDiffX <= 0 || subDiffZ <= 0 || subDiffX > 32 || subDiffZ > 32 || subDiffX * subDiffZ > 512) {
+                continue;
+            }
+
+            for (int chunkX = subMinChunkX; chunkX <= subMaxChunkX; chunkX++) {
+                for (int chunkZ = subMinChunkZ; chunkZ <= subMaxChunkZ; chunkZ++) {
+                    CopyOnWriteArrayList<Entry> bucket = index.buckets.get(ChunkPos.asLong(chunkX, chunkZ));
+                    if (bucket == null) continue;
+
+                    for (Entry entry : bucket) {
+                        if (entry.isStale(now)) {
+                            index.discard(entry);
+                            continue;
+                        }
+
+                        ChainShapeBaker.ChainShape shape = entry.shape;
+                        if (!shape.bounds().intersects(localArea)) continue;
+
+                        AABB[] boxes = shape.boxes();
+                        for (AABB box : boxes) {
+                            if (!box.intersects(localArea)) continue;
+                            AABB globalBox = SableHelper.toGlobalAABB(subLevel, box);
+                            if (globalBox.intersects(area)) {
+                                if (collected == null) collected = new ArrayList<>();
+                                collected.add(Shapes.create(globalBox));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         return collected;
     }
 
@@ -153,27 +210,71 @@ public final class ChainCollisionIndex {
         int minChunkZ = SectionPos.blockToSectionCoord(Mth.floor(area.minZ));
         int maxChunkZ = SectionPos.blockToSectionCoord(Mth.floor(area.maxZ));
 
-        for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
-            for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
-                CopyOnWriteArrayList<Entry> bucket = index.buckets.get(ChunkPos.asLong(chunkX, chunkZ));
-                if (bucket == null) continue;
+        long diffX = (long) maxChunkX - minChunkX + 1;
+        long diffZ = (long) maxChunkZ - minChunkZ + 1;
 
-                for (Entry entry : bucket) {
-                    if (entry.isStale(now)) {
-                        index.discard(entry);
-                        continue;
-                    }
+        if (diffX > 0 && diffZ > 0 && diffX <= 32 && diffZ <= 32 && diffX * diffZ <= 512) {
+            for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+                for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+                    CopyOnWriteArrayList<Entry> bucket = index.buckets.get(ChunkPos.asLong(chunkX, chunkZ));
+                    if (bucket == null) continue;
 
-                    ChainShapeBaker.ChainShape shape = entry.shape;
-                    if (!shape.bounds().intersects(area)) continue;
+                    for (Entry entry : bucket) {
+                        if (entry.isStale(now)) {
+                            index.discard(entry);
+                            continue;
+                        }
 
-                    AABB[] boxes = shape.boxes();
-                    for (int i = hangingOnly ? shape.hangingFrom() : 0; i < boxes.length; i++) {
-                        if (boxes[i].intersects(area)) return true;
+                        ChainShapeBaker.ChainShape shape = entry.shape;
+                        if (!shape.bounds().intersects(area)) continue;
+
+                        AABB[] boxes = shape.boxes();
+                        for (int i = hangingOnly ? shape.hangingFrom() : 0; i < boxes.length; i++) {
+                            if (boxes[i].intersects(area)) return true;
+                        }
                     }
                 }
             }
         }
+
+        for (SubLevelAccess subLevel : SableHelper.getAllIntersecting(level, area)) {
+            AABB localArea = SableHelper.toLocalAABB(subLevel, area);
+            int subMinChunkX = SectionPos.blockToSectionCoord(Mth.floor(localArea.minX));
+            int subMaxChunkX = SectionPos.blockToSectionCoord(Mth.floor(localArea.maxX));
+            int subMinChunkZ = SectionPos.blockToSectionCoord(Mth.floor(localArea.minZ));
+            int subMaxChunkZ = SectionPos.blockToSectionCoord(Mth.floor(localArea.maxZ));
+
+            long subDiffX = (long) subMaxChunkX - subMinChunkX + 1;
+            long subDiffZ = (long) subMaxChunkZ - subMinChunkZ + 1;
+            if (subDiffX <= 0 || subDiffZ <= 0 || subDiffX > 32 || subDiffZ > 32 || subDiffX * subDiffZ > 512) {
+                continue;
+            }
+
+            for (int chunkX = subMinChunkX; chunkX <= subMaxChunkX; chunkX++) {
+                for (int chunkZ = subMinChunkZ; chunkZ <= subMaxChunkZ; chunkZ++) {
+                    CopyOnWriteArrayList<Entry> bucket = index.buckets.get(ChunkPos.asLong(chunkX, chunkZ));
+                    if (bucket == null) continue;
+
+                    for (Entry entry : bucket) {
+                        if (entry.isStale(now)) {
+                            index.discard(entry);
+                            continue;
+                        }
+
+                        ChainShapeBaker.ChainShape shape = entry.shape;
+                        if (!shape.bounds().intersects(localArea)) continue;
+
+                        AABB[] boxes = shape.boxes();
+                        for (int i = hangingOnly ? shape.hangingFrom() : 0; i < boxes.length; i++) {
+                            if (!boxes[i].intersects(localArea)) continue;
+                            AABB globalBox = SableHelper.toGlobalAABB(subLevel, boxes[i]);
+                            if (globalBox.intersects(area)) return true;
+                        }
+                    }
+                }
+            }
+        }
+
         return false;
     }
 
@@ -210,7 +311,13 @@ public final class ChainCollisionIndex {
         int minChunkZ = SectionPos.blockToSectionCoord(Mth.floor(bounds.minZ));
         int maxChunkZ = SectionPos.blockToSectionCoord(Mth.floor(bounds.maxZ));
 
-        long[] keys = new long[(maxChunkX - minChunkX + 1) * (maxChunkZ - minChunkZ + 1)];
+        long diffX = (long) maxChunkX - minChunkX + 1;
+        long diffZ = (long) maxChunkZ - minChunkZ + 1;
+        if (diffX <= 0 || diffZ <= 0 || diffX > 32 || diffZ > 32 || diffX * diffZ > 512) {
+            return new long[0];
+        }
+
+        long[] keys = new long[(int) (diffX * diffZ)];
         int i = 0;
         for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
             for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {

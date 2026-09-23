@@ -68,6 +68,18 @@ repositories {
         name = "ClothConfig"
         url "https://maven.shedaniel.me/"
     }
+
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "RyanHCode"
+                url = "https://maven.ryanhcode.dev/releases"
+            }
+        }
+        filter {
+            includeGroup "dev.ryanhcode.sable-companion"
+        }
+    }
 }
 
 ['apiElements', 'runtimeElements'].each { variant ->

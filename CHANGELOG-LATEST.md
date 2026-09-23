@@ -1,3 +1,3 @@
-### Fixed
+### Added
 
-- Lighting and model adjustments for chains, leads, and knots.
+- Added support for Sable/Create Aeronautics.

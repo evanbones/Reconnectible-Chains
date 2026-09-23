@@ -51,6 +51,13 @@ dependencies {
     // Caverns and Chasms
     implementation "maven.modrinth:blueprint:8.1.0"
     implementation "maven.modrinth:caverns-and-chasms:3.0.0"
+
+    // Sable Companion
+    jarJar(implementation("dev.ryanhcode.sable-companion:sable-companion-common-1.21.1:[${sable_companion_version},)")) {
+        version {
+            prefer(sable_companion_version)
+        }
+    }
 }
 
 publishMods {
