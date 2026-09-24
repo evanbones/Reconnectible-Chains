@@ -2,11 +2,13 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.evandev.connectiblechains.mixin",
+  "plugin": "com.moulberry.mixinconstraints.ConstraintsMixinPlugin",
   "compatibilityLevel": "JAVA_18",
   "mixins": [
     "BlockItemMixin",
     "EntityMixin",
-    "WalkNodeEvaluatorMixin"
+    "WalkNodeEvaluatorMixin",
+    "compat.lithium.LithiumEntityCollisionsMixin"
   ],
   "client": [
   ],

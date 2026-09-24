@@ -7,7 +7,6 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -35,22 +34,7 @@ public record HangingSyncS2CPacket(int entityId, int holderId,
     public static void handle(HangingSyncS2CPacket packet, Player player) {
         if (!(player.level().getEntity(packet.entityId()) instanceof Chainable chainable)) return;
 
-        Chainable.ChainData data = null;
-
-        for (Chainable.ChainData chainData : chainable.getChainDataSet()) {
-            if (chainData.unresolvedChainHolderId == packet.holderId()) {
-                data = chainData;
-                break;
-            }
-        }
-
-        if (data == null) {
-            Entity holder = player.level().getEntity(packet.holderId());
-            if (holder != null) {
-                data = chainable.getChainData(holder);
-            }
-        }
-
+        Chainable.ChainData data = chainable.getChainData(packet.holderId());
         if (data != null) {
             data.hangings.clear();
             data.hangings.addAll(packet.hangings());

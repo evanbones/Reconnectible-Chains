@@ -58,6 +58,14 @@ dependencies {
             prefer(sable_companion_version)
         }
     }
+
+    compileOnly "com.moulberry:mixinconstraints:${mixin_constraints_version}"
+    jarJar(implementation("com.moulberry:mixinconstraints")) {
+        version {
+            strictly "[${mixin_constraints_version},)"
+            prefer "${mixin_constraints_version}"
+        }
+    }
 }
 
 publishMods {

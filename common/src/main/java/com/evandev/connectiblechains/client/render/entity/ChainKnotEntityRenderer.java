@@ -404,13 +404,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
         Level level = entity.level();
         Vec3 entityPos = entity.getPosition(tickDelta);
 
-        Set<Chainable.ChainData> links = entity.getChainDataSet();
-        for (Chainable.ChainData link : links) {
-            if (link.needsResolution()) {
-                links = new HashSet<>(links);
-                break;
-            }
-        }
+        Chainable.ChainData[] links = entity.getChainDataArray();
 
         for (Chainable.ChainData chainData : links) {
             Entity chainHolder = entity.getChainHolder(chainData);

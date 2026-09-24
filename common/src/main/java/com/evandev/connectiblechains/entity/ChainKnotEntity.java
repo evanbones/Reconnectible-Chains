@@ -44,8 +44,10 @@ import java.util.HashSet;
 import java.util.List;
 
 public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLinkEntity {
+    private static final ChainData[] EMPTY_CHAIN_DATA = new ChainData[0];
     public Direction attachedFace = Direction.UP;
     private HashSet<ChainData> chainDataSet = new HashSet<>();
+    private volatile ChainData[] chainDataArray = EMPTY_CHAIN_DATA;
     @NotNull
     private Item sourceItem;
     private float knotScale = Float.NaN;
@@ -88,6 +90,38 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         return chainDataSet;
     }
 
+    public ChainData[] getChainDataArray() {
+        return chainDataArray;
+    }
+
+    private void updateChainDataArray() {
+        this.chainDataArray = this.chainDataSet.isEmpty() ? EMPTY_CHAIN_DATA : this.chainDataSet.toArray(new ChainData[0]);
+    }
+
+    @Override
+    public @Nullable ChainData getChainData(@Nullable Entity holder) {
+        if (holder == null) return null;
+        ChainData[] chains = this.chainDataArray;
+        for (ChainData chain : chains) {
+            if (getChainHolder(chain) == holder) {
+                return chain;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public @Nullable ChainData getChainData(int holderId) {
+        if (holderId == 0) return null;
+        ChainData[] chains = this.chainDataArray;
+        for (ChainData chain : chains) {
+            if (chain.getHolderId() == holderId) {
+                return chain;
+            }
+        }
+        return null;
+    }
+
     @Override
     public void replaceChainData(@Nullable ChainData oldChainData, @Nullable ChainData newChainData) {
         if (oldChainData != null) {
@@ -96,11 +130,13 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
             }
         }
         if (newChainData != null) chainDataSet.add(newChainData);
+        updateChainDataArray();
     }
 
     @Override
     public void setChainData(HashSet<ChainData> chainDataSet) {
         this.chainDataSet = chainDataSet;
+        updateChainDataArray();
     }
 
     @Override
@@ -131,22 +167,24 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     private void resolveClientHolders() {
+        ChainData[] chains = this.chainDataArray;
         boolean anyUnresolved = false;
-        for (ChainData chainData : chainDataSet) {
-            if (chainData.needsResolution()) {
+        for (ChainData chain : chains) {
+            if (chain.needsResolution()) {
                 anyUnresolved = true;
                 break;
             }
         }
         if (!anyUnresolved) return;
 
-        for (ChainData chainData : new HashSet<>(chainDataSet)) {
-            getChainHolder(chainData);
+        for (ChainData chain : chains) {
+            getChainHolder(chain);
         }
     }
 
     private void syncCollision() {
-        for (ChainData chainData : getChainDataSet()) {
+        ChainData[] chains = this.chainDataArray;
+        for (ChainData chainData : chains) {
             Entity chainHolder = chainData.getResolvedHolder();
             if (chainHolder instanceof Chainable && !chainHolder.isRemoved()) {
                 ChainCollisionIndex.ensure(this.level(), this, chainHolder, chainData);
@@ -339,7 +377,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         }
         d *= 64.0D * getViewScale();
 
-        if (!this.getChainDataSet().isEmpty()) {
+        if (this.chainDataArray.length > 0) {
             return distance < Math.max(d * d, effectiveRange * effectiveRange);
         }
 
@@ -349,7 +387,12 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     @Override
     public @NotNull AABB getBoundingBoxForCulling() {
         AABB result = super.getBoundingBoxForCulling();
-        for (ChainData chainData : this.getChainDataSet()) {
+        ChainData[] chains = this.chainDataArray;
+        if (chains.length == 0) {
+            return result;
+        }
+
+        for (ChainData chainData : chains) {
             Entity entity = chainData.getResolvedHolder();
             if (entity == null) {
                 entity = this.getChainHolder(chainData);
@@ -438,7 +481,8 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     @Override
     public void startSeenByPlayer(@NotNull ServerPlayer player) {
         super.startSeenByPlayer(player);
-        for (ChainData chainData : getChainDataSet()) {
+        ChainData[] chains = this.chainDataArray;
+        for (ChainData chainData : chains) {
             Entity holder = getChainHolder(chainData);
             Services.NETWORK.sendToClient(player, new ChainAttachS2CPacket(this, null, holder, chainData.sourceItem));
             if (holder != null && chainData.customSlack >= 0) {
@@ -474,8 +518,9 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
     @Override
     public float rotate(@NotNull Rotation rotation) {
-        for (ChainData chainData : chainDataSet) {
-            chainData.applyRotation(rotation);
+        ChainData[] chains = this.chainDataArray;
+        for (ChainData chain : chains) {
+            chain.applyRotation(rotation);
         }
         return super.rotate(rotation);
     }

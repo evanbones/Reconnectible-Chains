@@ -1,3 +1,4 @@
 ### Fixed
 
-- Fixed possible model crash with Sable.
+- Fixed bounding box crash.
+- Fixed log warning when not using Lithium.

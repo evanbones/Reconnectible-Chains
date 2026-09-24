@@ -24,6 +24,8 @@ dependencies {
     // Sable Companion
     include(modImplementation("dev.ryanhcode.sable-companion:sable-companion-fabric-1.21.1:${sable_companion_version}"))
 
+    include implementation("com.moulberry:mixinconstraints:${mixin_constraints_version}")
+
     modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 }

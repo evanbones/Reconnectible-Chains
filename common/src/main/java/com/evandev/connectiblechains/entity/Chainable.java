@@ -323,19 +323,19 @@ public interface Chainable {
             return null;
         }
 
+        if (chainData.chainHolder != null) {
+            return chainData.chainHolder;
+        }
+
         if (chainData.unresolvedChainHolderId != 0 && entity.level().isClientSide) {
             Entity chainHolder = entity.level().getEntity(chainData.unresolvedChainHolderId);
             if (chainHolder != null) {
-                ChainData newData = new ChainData(chainHolder, chainData.sourceItem);
-                newData.customSlack = chainData.customSlack;
-                newData.buntings.addAll(chainData.buntings);
-                newData.banners.addAll(chainData.banners);
-                newData.hangings.addAll(chainData.hangings);
-                entity.replaceChainData(chainData, newData);
+                chainData.setChainHolder(chainHolder);
+                return chainHolder;
             }
         }
 
-        return chainData.chainHolder;
+        return null;
     }
 
     static SoundType getSourceBlockSoundGroup(Item sourceItem) {
@@ -522,16 +522,20 @@ public interface Chainable {
     default ChainData getChainData(@Nullable Entity holder) {
         if (holder == null) return null;
 
-        boolean anyUnresolved = false;
         for (ChainData chainData : getChainDataSet()) {
-            if (chainData.getResolvedHolder() == holder) return chainData;
-            if (chainData.needsResolution()) anyUnresolved = true;
-        }
-
-        if (!anyUnresolved) return null;
-
-        for (ChainData chainData : new HashSet<>(getChainDataSet())) {
             if (getChainHolder(chainData) == holder) {
+                return chainData;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    default ChainData getChainData(int holderId) {
+        if (holderId == 0) return null;
+
+        for (ChainData chainData : getChainDataSet()) {
+            if (chainData.getHolderId() == holderId) {
                 return chainData;
             }
         }
@@ -556,7 +560,7 @@ public interface Chainable {
         public final List<BannerEntry> banners = new ArrayList<>();
         public final List<HangingEntry> hangings = new ArrayList<>();
         @Nullable
-        private final Entity chainHolder;
+        private Entity chainHolder;
         @Nullable
         public Either<UUID, BlockPos> unresolvedChainData;
         public float customSlack = -1f;
@@ -584,6 +588,10 @@ public interface Chainable {
             this.unresolvedChainData = null;
         }
 
+        public void setChainHolder(@Nullable Entity chainHolder) {
+            this.chainHolder = chainHolder;
+        }
+
         public float getSlack() {
             return customSlack < 0 ? CommonClass.runtimeConfig.getChainHangAmount() : customSlack;
         }
@@ -601,7 +609,7 @@ public interface Chainable {
             return Chainable.getSourceBlockSoundGroup(sourceItem);
         }
 
-        private int getHolderId() {
+        public int getHolderId() {
             return chainHolder != null ? chainHolder.getId() : unresolvedChainHolderId;
         }
 
