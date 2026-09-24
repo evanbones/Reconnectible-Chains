@@ -98,6 +98,9 @@ dependencies {
 
     // RRV
     modRuntimeOnly("cc.cassian.rrv:reliable-recipe-viewer-fabric:${property("deps.rrv")}")
+
+    // Mixin Constraints
+    include(implementation("com.moulberry:mixinconstraints:${property("deps.mixin_constraints")}")!!)
 }
 
 stonecutter {

@@ -113,7 +113,12 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
     protected AABB getBoundingBoxForCulling(ChainKnotEntity entity, float partialTick) {
         AABB result = super.getBoundingBoxForCulling(entity, partialTick);
 *///?}
-        for (Chainable.ChainData chainData : entity.getChainDataSet()) {
+        Chainable.ChainData[] chains = entity.getChainDataArray();
+        if (chains.length == 0) {
+            return result;
+        }
+
+        for (Chainable.ChainData chainData : chains) {
             Entity chainHolder = chainData.getResolvedHolder();
             if (chainHolder == null) {
                 chainHolder = entity.getChainHolder(chainData);
@@ -149,7 +154,9 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         Level level = entity.level();
         Vec3 entityPos = entity.getPosition(tickDelta);
 
-        for (Chainable.ChainData chainData : new HashSet<>(entity.getChainDataSet())) {
+        Chainable.ChainData[] links = entity.getChainDataArray();
+
+        for (Chainable.ChainData chainData : links) {
             Entity chainHolder = entity.getChainHolder(chainData);
             if (chainHolder == null) continue;
 

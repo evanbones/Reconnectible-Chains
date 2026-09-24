@@ -1,6 +1,7 @@
 package com.evandev.connectiblechains.mixin.compat.lithium;
 
 import com.evandev.connectiblechains.util.ChainCollisionIndex;
+import com.moulberry.mixinconstraints.annotations.IfModLoaded;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
@@ -12,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
 
+@IfModLoaded(value = "lithium", aliases = {"radium"})
 @Mixin(targets = "net.caffeinemc.mods.lithium.common.entity.LithiumEntityCollisions", remap = false)
 public class LithiumEntityCollisionsMixin {
 

@@ -130,6 +130,16 @@ dependencies {
 
     // RRV
     runtimeOnly("cc.cassian.rrv:reliable-recipe-viewer-neoforge:${property("deps.rrv")}")
+
+    // Mixin Constraints
+    compileOnly("com.moulberry:mixinconstraints:${property("deps.mixin_constraints")}")
+    val mixinConstraints = implementation("com.moulberry:mixinconstraints") {
+        version {
+            strictly("[${property("deps.mixin_constraints")},)")
+            prefer(property("deps.mixin_constraints") as String)
+        }
+    }
+    "jarJar"(mixinConstraints!!)
 }
 
 stonecutter {
