@@ -351,16 +351,20 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         AABB result = super.getBoundingBoxForCulling();
         for (ChainData chainData : this.getChainDataSet()) {
             Entity entity = chainData.getResolvedHolder();
+            if (entity == null) {
+                entity = this.getChainHolder(chainData);
+            }
             if (entity == null) continue;
 
             Vec3 holderPos = SableHelper.getHolderPosInEntitySpace(this.level(), this, entity);
+            if (!Chainable.isValidChainDistance(this.position(), holderPos)) continue;
+
             AABB holderBox = entity.getBoundingBox().move(holderPos.subtract(entity.position()));
             result = result.minmax(holderBox);
 
             double distance = this.position().distanceTo(holderPos);
             double dy = holderPos.y() - this.getY();
             double sag = Math.abs(MathHelper.drip2(distance / 2.0, distance, dy, chainData.getSlack()));
-
             double minY = Math.min(this.getY(), holderPos.y()) - sag - 1.0;
             result = result.minmax(new AABB(this.getX(), minY, this.getZ(), this.getX(), minY, this.getZ()));
         }

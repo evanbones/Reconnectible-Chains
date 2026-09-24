@@ -40,10 +40,13 @@ import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.entity.BannerPatternLayers;
+import dev.ryanhcode.sable.companion.SubLevelAccess;
+import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -102,8 +105,35 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
     }
 
     @Override
-    public @NotNull ResourceLocation getTextureLocation(@NotNull ChainKnotEntity entity) {
+    public ResourceLocation getTextureLocation(@NotNull ChainKnotEntity entity) {
         return null;
+    }
+
+    @Override
+    public boolean shouldRender(ChainKnotEntity entity, Frustum camera, double camX, double camY, double camZ) {
+        double distanceSqr = SableHelper.distanceToCameraSqr(entity, this.entityRenderDispatcher);
+        if (!entity.shouldRenderAtSqrDistance(distanceSqr)) {
+            return false;
+        }
+
+        if (entity.noCulling) {
+            return true;
+        }
+
+        AABB aabb = entity.getBoundingBoxForCulling().inflate(0.5);
+        if (aabb.hasNaN() || aabb.getSize() == 0.0) {
+            aabb = new AABB(
+                    entity.getX() - 2.0, entity.getY() - 2.0, entity.getZ() - 2.0,
+                    entity.getX() + 2.0, entity.getY() + 2.0, entity.getZ() + 2.0
+            );
+        }
+
+        SubLevelAccess subLevel = SableHelper.getSubLevel(entity.level(), entity, null);
+        if (subLevel != null) {
+            aabb = SableHelper.toGlobalAABB(subLevel, aabb);
+        }
+
+        return camera.isVisible(aabb);
     }
 
     @Override
@@ -180,6 +210,8 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
         if (CommonClass.runtimeConfig.doDebugDraw()) {
             vertexConsumer = vertexConsumerProvider.getBuffer(RenderType.lines());
         }
+
+        if (!Chainable.isValidChainDistance(startPos, endPos)) return;
 
         matrices.pushPose();
         matrices.translate(offset.x, offset.y, offset.z);
@@ -392,6 +424,9 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity> {
                 dstPos = chainHolder.getRopeHoldPosition(tickDelta);
             }
             dstPos = SableHelper.transformHolderPosForRenderer(level, entity, chainHolder, dstPos, tickDelta);
+            if (!Chainable.isValidChainDistance(srcPos, dstPos)) {
+                continue;
+            }
 
             int startPackedLight = this.getPackedLightCoords(entity, tickDelta);
             int endPackedLight = this.entityRenderDispatcher.getPackedLightCoords(chainHolder, tickDelta);

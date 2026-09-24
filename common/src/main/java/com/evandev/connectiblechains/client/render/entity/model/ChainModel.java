@@ -79,10 +79,11 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions, 
 
         public Builder(int initialCapacity, boolean shaded) {
             this.shaded = shaded;
-            vertices = new FloatArrayList(initialCapacity * 3);
-            uvs = new FloatArrayList(initialCapacity * 2);
-            lightFractions = new FloatArrayList(initialCapacity);
-            normals = new FloatArrayList(initialCapacity * 3);
+            int safeCapacity = Math.min(Math.max(initialCapacity, 16), 65536);
+            vertices = new FloatArrayList(safeCapacity * 3);
+            uvs = new FloatArrayList(safeCapacity * 2);
+            lightFractions = new FloatArrayList(safeCapacity);
+            normals = new FloatArrayList(safeCapacity * 3);
         }
 
         public Builder fraction(float f) {

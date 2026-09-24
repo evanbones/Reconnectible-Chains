@@ -21,9 +21,15 @@ public final class SableHelper {
         return SableCompanion.INSTANCE.distanceSquaredWithSubLevels(entity.level(), camPos, entity.position());
     }
 
+    @Nullable
+    public static SubLevelAccess getSubLevel(Level level, @Nullable Entity entity, @Nullable Vec3 fallbackPos) {
+        SubLevelAccess subLevel = entity != null ? SableCompanion.INSTANCE.getContaining(entity) : null;
+        return subLevel != null ? subLevel : (fallbackPos != null ? SableCompanion.INSTANCE.getContaining(level, fallbackPos) : null);
+    }
+
     public static Vec3 transformHolderPosForRenderer(Level level, Entity entity, Entity chainHolder, Vec3 dstPos, float tickDelta) {
-        SubLevelAccess entitySubLevel = SableCompanion.INSTANCE.getContaining(entity);
-        SubLevelAccess holderSubLevel = SableCompanion.INSTANCE.getContaining(level, dstPos);
+        SubLevelAccess entitySubLevel = getSubLevel(level, entity, null);
+        SubLevelAccess holderSubLevel = getSubLevel(level, chainHolder, dstPos);
         if (entitySubLevel == holderSubLevel) {
             return dstPos;
         }
@@ -45,13 +51,13 @@ public final class SableHelper {
     }
 
     public static Vec3 getHolderPosInEntitySpace(Level level, Entity entity, Entity chainHolder) {
-        SubLevelAccess entitySubLevel = SableCompanion.INSTANCE.getContaining(entity);
-        SubLevelAccess holderSubLevel = SableCompanion.INSTANCE.getContaining(chainHolder);
+        SubLevelAccess entitySubLevel = getSubLevel(level, entity, null);
+        SubLevelAccess holderSubLevel = getSubLevel(level, chainHolder, chainHolder != null ? chainHolder.position() : null);
         if (entitySubLevel == holderSubLevel) {
-            return chainHolder.position();
+            return chainHolder != null ? chainHolder.position() : Vec3.ZERO;
         }
 
-        Vec3 globalPos = chainHolder.position();
+        Vec3 globalPos = chainHolder != null ? chainHolder.position() : Vec3.ZERO;
         if (holderSubLevel != null) {
             globalPos = holderSubLevel.logicalPose().transformPosition(globalPos);
         }

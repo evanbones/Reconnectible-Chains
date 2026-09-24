@@ -475,6 +475,9 @@ public class ChainRaycastHelper {
                     dstPos = chainHolder.getLeashOffset(1.0f).add(chainHolder.position());
                 }
 
+                if (!Chainable.isValidChainDistance(srcPos, dstPos)) {
+                    continue;
+                }
                 double distance = srcPos.distanceTo(dstPos);
                 double maxDroop = Math.abs(MathHelper.drip2(distance / 2.0, distance, dstPos.y() - srcPos.y(), chainData.getSlack()) - (dstPos.y() - srcPos.y()) / 2.0);
 

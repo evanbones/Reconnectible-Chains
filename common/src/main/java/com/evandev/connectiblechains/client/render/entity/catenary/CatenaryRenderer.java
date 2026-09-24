@@ -1,5 +1,6 @@
 package com.evandev.connectiblechains.client.render.entity.catenary;
 
+import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.client.render.entity.UVRect;
 import com.evandev.connectiblechains.client.render.entity.model.ChainModel;
 import com.mojang.datafixers.util.Pair;
@@ -42,6 +43,12 @@ public abstract class CatenaryRenderer {
     }
 
     public abstract ChainModel buildModel(Vector3f chainVec, float slack);
+
+    protected ChainModel.Builder createBuilder(Vector3f chainVec) {
+        float desiredSegmentLength = 1f / CommonClass.runtimeConfig.getQuality();
+        int initialCapacity = Math.min(MAX_SEGMENTS * 4, (int) (4f * chainVec.length() / desiredSegmentLength));
+        return ChainModel.builder(initialCapacity, isShaded());
+    }
 
     public boolean isShaded() {
         return true;

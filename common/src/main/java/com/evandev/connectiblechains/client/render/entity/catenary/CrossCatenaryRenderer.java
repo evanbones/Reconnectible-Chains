@@ -20,9 +20,7 @@ public class CrossCatenaryRenderer extends CatenaryRenderer {
 
     @Override
     public ChainModel buildModel(Vector3f chainVec, float slack) {
-        float desiredSegmentLength = 1f / CommonClass.runtimeConfig.getQuality();
-        int initialCapacity = (int) (4f * chainVec.length() / desiredSegmentLength);
-        ChainModel.Builder builder = ChainModel.builder(initialCapacity, isShaded());
+        ChainModel.Builder builder = createBuilder(chainVec);
 
         if (chainVec.x() == 0F && chainVec.z() == 0F) {
             buildFaceVertical(builder, chainVec, 45, SIDE_A);

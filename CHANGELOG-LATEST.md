@@ -1,3 +1,3 @@
-### Added
+### Fixed
 
-- Added support for Sable/Create Aeronautics.
+- Fixed possible model crash with Sable.

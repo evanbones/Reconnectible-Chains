@@ -59,6 +59,10 @@ public final class ChainCollisionIndex {
             src = SableHelper.projectOutOfSubLevel(level, src);
             dst = SableHelper.projectOutOfSubLevel(level, dst);
         }
+
+        if (!Chainable.isValidChainDistance(src, dst)) {
+            return;
+        }
         float slack = chainData.getSlack();
         int hangingsHash = hangingsHash(chainData);
 

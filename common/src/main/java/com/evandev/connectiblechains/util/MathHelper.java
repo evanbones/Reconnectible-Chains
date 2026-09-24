@@ -61,17 +61,29 @@ public class MathHelper {
         }
 
         public static Catenary of(double d, double h, double slack) {
-            double a = slack * Math.max(1.5, d / 2.5);
-            double p1 = a * asinh((h / (2D * a)) * (1D / Math.sinh(d / (2D * a))));
+            d = Math.max(1e-4, Double.isFinite(d) ? d : 1.0);
+            h = Double.isFinite(h) ? h : 0.0;
+            slack = Double.isFinite(slack) ? slack : 1.0;
+            double a = Math.max(1e-4, slack * Math.max(1.5, d / 2.5));
+            double sinhVal = Math.sinh(d / (2D * a));
+            if (!Double.isFinite(sinhVal) || Math.abs(sinhVal) < 1e-8) {
+                sinhVal = 1e-8;
+            }
+            double p1 = a * asinh((h / (2D * a)) * (1D / sinhVal));
+            if (!Double.isFinite(p1)) {
+                p1 = 0.0;
+            }
             return new Catenary(a, (2D * p1 - d) / (2D * a));
         }
 
         public double y(double x) {
-            return offset + a * Math.cosh(Math.fma(x, invA, phase));
+            double val = offset + a * Math.cosh(Math.fma(x, invA, phase));
+            return Double.isFinite(val) ? val : 0.0;
         }
 
         public double slope(double x) {
-            return Math.sinh(Math.fma(x, invA, phase));
+            double val = Math.sinh(Math.fma(x, invA, phase));
+            return Double.isFinite(val) ? val : 0.0;
         }
     }
 }

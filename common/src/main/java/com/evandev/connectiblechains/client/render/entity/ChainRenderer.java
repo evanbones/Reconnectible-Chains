@@ -24,6 +24,7 @@ public class ChainRenderer {
     private final BakeKey lookupKey = new BakeKey();
 
     public void renderBaked(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack matrices, Vector3f chainVec, float slack, int blockLight0, int blockLight1, int skyLight0, int skyLight1, int tintColor) {
+        if (!isFinite(chainVec)) return;
         lookupKey.set(chainVec, renderer, slack);
 
         ChainModel model = models.get(lookupKey);
@@ -35,8 +36,13 @@ public class ChainRenderer {
     }
 
     public void render(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack matrices, Vector3f chainVec, float slack, int blockLight0, int blockLight1, int skyLight0, int skyLight1, int tintColor) {
+        if (!isFinite(chainVec)) return;
         ChainModel model = renderer.buildModel(chainVec, slack);
         model.render(buffer, matrices, blockLight0, blockLight1, skyLight0, skyLight1, tintColor);
+    }
+
+    private static boolean isFinite(Vector3f v) {
+        return Float.isFinite(v.x + v.y + v.z);
     }
 
     public void purge() {

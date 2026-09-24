@@ -44,6 +44,15 @@ public interface Chainable {
         return CommonClass.runtimeConfig.getMaxChainRange();
     }
 
+    static boolean isValidChainDistance(double distanceSqr) {
+        double max = getMaxChainLength() + 64.0;
+        return Double.isFinite(distanceSqr) && distanceSqr <= max * max;
+    }
+
+    static boolean isValidChainDistance(@Nullable Vec3 a, @Nullable Vec3 b) {
+        return a != null && b != null && isValidChainDistance(a.distanceToSqr(b));
+    }
+
     private static <E extends HangingEntity & Chainable> boolean canAttachTo(E entity, Entity potentialHolder) {
         if (entity.getChainData(potentialHolder) != null) {
             return false;
