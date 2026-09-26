@@ -11,7 +11,7 @@ public class ChainTracker {
     public static void register(Level level, Chainable chainable) {
         if (level == null || chainable == null) return;
 
-        TRACKED_CHAINS.computeIfAbsent(level, _ -> Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>())))
+        TRACKED_CHAINS.computeIfAbsent(level, k -> Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>())))
                 .add(chainable);
     }
 

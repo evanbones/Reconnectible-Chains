@@ -1,4 +1,1 @@
-### Fixed
-
-- Fixed bounding box crash.
-- Fixed log warning when not using Lithium.
+- Switched to stonecutter build for 1.21.

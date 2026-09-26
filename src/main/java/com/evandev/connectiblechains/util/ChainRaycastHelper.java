@@ -472,7 +472,11 @@ public class ChainRaycastHelper {
                 if (chainHolder instanceof ChainKnotEntity knot) {
                     dstPos = knot.getChainPos(1.0f);
                 } else {
+//? if >=26.1 {
                     dstPos = chainHolder.getRopeHoldPosition(1.0f);
+//?} else {
+                    /*dstPos = chainHolder.getLeashOffset(1.0f).add(chainHolder.position());
+                     *///?}
                 }
 
                 if (!Chainable.isValidChainDistance(srcPos, dstPos)) {

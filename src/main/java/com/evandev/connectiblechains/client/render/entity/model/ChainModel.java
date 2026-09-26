@@ -4,7 +4,11 @@ import com.evandev.connectiblechains.CommonClass;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
+//? if >=26.1 {
 import net.minecraft.util.LightCoordsUtil;
+//?} else {
+/*import net.minecraft.client.renderer.LightTexture;
+*///?}
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.util.Mth;
 import org.joml.Matrix3f;
@@ -24,7 +28,11 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions, 
         int[] ramp = new int[LIGHT_STEPS];
         for (int i = 0; i < LIGHT_STEPS; i++) {
             float f = (float) i / (LIGHT_STEPS - 1);
+//? if >=26.1 {
             ramp[i] = LightCoordsUtil.pack(
+//?} else {
+            /*ramp[i] = LightTexture.pack(
+*///?}
                     (int) Mth.lerp(f, (float) bLight0, (float) bLight1),
                     (int) Mth.lerp(f, (float) sLight0, (float) sLight1));
         }
@@ -68,9 +76,11 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions, 
                     .setLight(lightRamp[step])
                     .setNormal(norm.x(), norm.y(), norm.z());
 
+            //? if >=26.1 {
             if (CommonClass.runtimeConfig.doDebugDraw()) {
                 buffer.setLineWidth(1.0f);
             }
+            //?}
         }
     }
 

@@ -4,9 +4,11 @@ package com.evandev.connectiblechains.platform.neoforge;
 /*import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.platform.services.IRegistryHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
+//? if >=26.1 {
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+//?}
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -19,11 +21,16 @@ public class NeoForgeRegistryHelper implements IRegistryHelper {
 
     @Override
     public <T extends Entity> Supplier<EntityType<T>> registerEntity(String name, Supplier<EntityType.Builder<T>> builderSupplier) {
+        //? if >=26.1 {
         Identifier id = Identifier.fromNamespaceAndPath(CommonClass.MODID, name);
         ResourceKey<EntityType<?>> key = ResourceKey.create(Registries.ENTITY_TYPE, id);
 
         return ENTITIES.register(name,
                 () -> builderSupplier.get().build(key));
+        //?} else {
+        /^return ENTITIES.register(name,
+                () -> builderSupplier.get().build(name));
+        ^///?}
     }
 }
 *///?}

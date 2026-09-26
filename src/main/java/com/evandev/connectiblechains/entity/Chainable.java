@@ -9,11 +9,19 @@ import com.evandev.connectiblechains.util.HangingLightHelper;
 import com.mojang.datafixers.util.Either;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+//? if >=26.1 {
 import net.minecraft.core.UUIDUtil;
+//?}
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+//? if <26.1 {
+/*import net.minecraft.nbt.ListTag;
+*///?}
 import net.minecraft.nbt.NbtOps;
+//? if <26.1 {
+/*import net.minecraft.nbt.Tag;
+*///?}
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -24,12 +32,17 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.HangingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
+//? if <26.1 {
+/*import net.minecraft.world.level.GameRules;
+*///?}
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BannerPatternLayers;
+//? if >=26.1 {
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+//?}
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -62,6 +75,7 @@ public interface Chainable {
         return false;
     }
 
+    //? if >=26.1 {
     private static <E extends HangingEntity & Chainable> HashSet<ChainData> readChainDataSet(E entity, ValueInput input) {
         HashSet<ChainData> result = new HashSet<>();
 
@@ -119,6 +133,65 @@ public interface Chainable {
         });
         return result;
     }
+    //?} else {
+    /*private static <E extends HangingEntity & Chainable> HashSet<ChainData> readChainDataSet(E entity, CompoundTag nbt) {
+        HashSet<ChainData> result = new HashSet<>();
+        if (nbt.contains(CHAINS_NBT_KEY, Tag.TAG_LIST)) {
+            ListTag list = nbt.getList(CHAINS_NBT_KEY, Tag.TAG_COMPOUND);
+            for (Tag element : list) {
+                if (!(element instanceof CompoundTag compound)) continue;
+
+                ChainData newChainData = null;
+                Item source = BuiltInRegistries.ITEM.getValue(Identifier.tryParse(compound.getString(SOURCE_ITEM_KEY)));
+
+                if (compound.hasUUID("UUID")) {
+                    newChainData = new ChainData(Either.left(compound.getUUID("UUID")), source);
+                } else if (compound.contains("DestX")) {
+                    BlockPos desPos = new BlockPos(compound.getInt("DestX"), compound.getInt("DestY"), compound.getInt("DestZ"));
+                    BlockPos relPos = desPos.subtract(entity.getPos());
+                    Either<UUID, BlockPos> either = Either.right(relPos);
+                    newChainData = new ChainData(either, source);
+                } else if (compound.contains("RelX")) {
+                    var relPos = new BlockPos(compound.getInt("RelX"), compound.getInt("RelY"), compound.getInt("RelZ"));
+                    newChainData = new ChainData(Either.right(relPos), source);
+                }
+
+                if (newChainData != null) {
+                    if (compound.contains("Slack")) newChainData.customSlack = compound.getFloat("Slack");
+                    if (compound.contains("Buntings", Tag.TAG_LIST)) {
+                        ListTag buntingList = compound.getList("Buntings", Tag.TAG_COMPOUND);
+                        for (Tag bTag : buntingList) {
+                            if (!(bTag instanceof CompoundTag buntingTag)) continue;
+                            DyeColor color = DyeColor.byName(buntingTag.getString("Color"), null);
+                            if (color != null)
+                                newChainData.buntings.add(new ChainData.BuntingEntry(buntingTag.getFloat("T"), color));
+                        }
+                    }
+                    if (compound.contains("Banners", Tag.TAG_LIST)) {
+                        ListTag bannerList = compound.getList("Banners", Tag.TAG_COMPOUND);
+                        for (Tag bTag : bannerList) {
+                            if (!(bTag instanceof CompoundTag bannerTag)) continue;
+                            CompoundTag data = bannerTag.getCompound("Data");
+                            DyeColor color = DyeColor.byName(data.getString("BaseColor"), DyeColor.WHITE);
+                            newChainData.banners.add(new ChainData.BannerEntry(bannerTag.getFloat("T"), color, data));
+                        }
+                    }
+                    if (compound.contains("Hangings", Tag.TAG_LIST)) {
+                        ListTag hangingList = compound.getList("Hangings", Tag.TAG_COMPOUND);
+                        for (Tag hTag : hangingList) {
+                            if (!(hTag instanceof CompoundTag hangingTag)) continue;
+                            Identifier blockId = Identifier.tryParse(hangingTag.getString("Block"));
+                            if (blockId != null)
+                                newChainData.hangings.add(new ChainData.HangingEntry(hangingTag.getFloat("T"), blockId));
+                        }
+                    }
+                    result.add(newChainData);
+                }
+            }
+        }
+        return result;
+    }
+    *///?}
 
     private static <E extends HangingEntity & Chainable> void resolveChainDataSet(E entity, HashSet<ChainData> chainDataSet) {
         if (!(entity.level() instanceof ServerLevel serverWorld)) return;
@@ -179,11 +252,11 @@ public interface Chainable {
             entity.onChainDetached(chainData);
             if (entity.level() instanceof ServerLevel serverWorld) {
                 if (dropItem) {
-                    entity.spawnAtLocation(serverWorld, new ItemStack(chainData.sourceItem), 0.0f);
+                    spawnAtLocation(entity, serverWorld, new ItemStack(chainData.sourceItem));
                     for (ChainData.BuntingEntry entry : chainData.buntings) {
                         Item buntingItem = BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("supplementaries", "bunting_" + entry.color().getName()));
                         if (buntingItem != Items.AIR) {
-                            entity.spawnAtLocation(serverWorld, new ItemStack(buntingItem), 0.0f);
+                            spawnAtLocation(entity, serverWorld, new ItemStack(buntingItem));
                         }
                     }
                     for (ChainData.BannerEntry entry : chainData.banners) {
@@ -194,12 +267,12 @@ public interface Chainable {
                             BannerPatternLayers.CODEC.parse(ctx, entry.data().get("Pattern"))
                                     .result().ifPresent(p -> bannerStack.set(DataComponents.BANNER_PATTERNS, p));
                         }
-                        entity.spawnAtLocation(serverWorld, bannerStack, 0.0f);
+                        spawnAtLocation(entity, serverWorld, bannerStack);
                     }
                     for (ChainData.HangingEntry entry : chainData.hangings) {
                         Item hangingItem = BuiltInRegistries.ITEM.getValue(entry.blockId());
                         if (hangingItem != Items.AIR)
-                            entity.spawnAtLocation(serverWorld, new ItemStack(hangingItem), 0.0f);
+                            spawnAtLocation(entity, serverWorld, new ItemStack(hangingItem));
                     }
                 }
 
@@ -226,8 +299,20 @@ public interface Chainable {
 
         if (incoming.isEmpty()) {
             knot.discard();
+//? if >=26.1 {
             knot.dropItem(level, null);
+//?} else {
+            /*knot.dropItem(null);
+*///?}
         }
+    }
+
+    private static void spawnAtLocation(Entity entity, ServerLevel level, ItemStack stack) {
+        //? if >=26.1 {
+        entity.spawnAtLocation(level, stack, 0.0f);
+        //?} else {
+        /*entity.spawnAtLocation(stack, 0.0f);
+        *///?}
     }
 
     private static <E extends HangingEntity & Chainable> void attachChain(E entity, ChainData chainData, @Nullable Entity previousHolder, boolean sendPacket) {
@@ -268,7 +353,11 @@ public interface Chainable {
                 if (entity.isRemoved() || chainHolder.isRemoved()) {
                     Entity.RemovalReason reason = entity.isRemoved() ? entity.getRemovalReason() : chainHolder.getRemovalReason();
                     if (reason != null && reason.shouldDestroy()) {
+//? if >=26.1 {
                         if (level.getGameRules().get(GameRules.ENTITY_DROPS)) {
+//?} else {
+                        /*if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+*///?}
                             entity.detachChain(chainData);
                         } else {
                             entity.detachChainWithoutDrop(chainData);
@@ -301,7 +390,11 @@ public interface Chainable {
                                         soundType.getHitSound(), SoundSource.PLAYERS, 0.4f,
                                         0.6f + player.level().getRandom().nextFloat() * 0.4f);
                                 if (CommonClass.runtimeConfig.doShowRangeWarningHud() && player instanceof ServerPlayer serverPlayer) {
+//? if >=26.1 {
                                     serverPlayer.sendSystemMessage(
+//?} else {
+                                    /*serverPlayer.displayClientMessage(
+*///?}
                                             Component.translatable("message.connectiblechains.chain_range_warning").withStyle(ChatFormatting.YELLOW),
                                             true);
                                 }
@@ -344,7 +437,11 @@ public interface Chainable {
         if (sourceItem instanceof BlockItem blockItem) {
             return blockItem.getBlock().defaultBlockState().getSoundType();
         } else if (new ItemStack(sourceItem).is(ModTagRegistry.ROPES)) {
+//? if >=26.1 {
             return new SoundType(1.0f, 1.0f, SoundEvents.LEAD_BREAK, SoundType.WOOL.getStepSound(), SoundEvents.LEAD_TIED, SoundType.WOOL.getHitSound(), SoundType.WOOL.getFallSound());
+//?} else {
+            /*return new SoundType(1.0f, 1.0f, SoundEvents.LEASH_KNOT_BREAK, SoundType.WOOL.getStepSound(), SoundEvents.LEASH_KNOT_PLACE, SoundType.WOOL.getHitSound(), SoundType.WOOL.getFallSound());
+*///?}
         }
         return SoundType.CHAIN;
     }
@@ -370,6 +467,7 @@ public interface Chainable {
         this.replaceChainData(oldChainData, newChainData);
     }
 
+    //? if >=26.1 {
     default void readChainDataFromNbt(ValueInput input) {
         input.getString(SOURCE_ITEM_KEY).ifPresent(s -> {
             Identifier id = Identifier.tryParse(s);
@@ -381,7 +479,18 @@ public interface Chainable {
         }
         this.setChainData(chainData);
     }
+    //?} else {
+    /*default void readChainDataFromNbt(CompoundTag nbt) {
+        setSourceItem(BuiltInRegistries.ITEM.getValue(Identifier.tryParse(nbt.getString(SOURCE_ITEM_KEY))));
+        HashSet<ChainData> chainData = readChainDataSet((HangingEntity & Chainable) this, nbt);
+        if (!this.getChainDataSet().isEmpty() && chainData.isEmpty()) {
+            this.detachAllChainsWithoutDrop();
+        }
+        this.setChainData(chainData);
+    }
+    *///?}
 
+    //? if >=26.1 {
     default void writeChainDataSetToNbt(ValueOutput output, HashSet<ChainData> chainDataSet) {
         output.putString(SOURCE_ITEM_KEY, BuiltInRegistries.ITEM.getKey(getSourceItem()).toString());
         BlockPos relativeTo = ((HangingEntity) this).getPos();
@@ -448,6 +557,104 @@ public interface Chainable {
             }
         }
     }
+    //?} else {
+    /*default void writeChainDataSetToNbt(CompoundTag nbt, HashSet<ChainData> chainDataSet) {
+        nbt.putString(SOURCE_ITEM_KEY, BuiltInRegistries.ITEM.getKey(getSourceItem()).toString());
+        BlockPos relativeTo = ((HangingEntity) this).getPos();
+
+        ListTag linksTag = new ListTag();
+        for (ChainData chainData : chainDataSet) {
+            Either<UUID, BlockPos> either = chainData.unresolvedChainData;
+            if (chainData.chainHolder instanceof ChainKnotEntity chainKnotEntity) {
+                either = Either.right(chainKnotEntity.getPos().subtract(relativeTo));
+            } else if (chainData.chainHolder != null) {
+                either = Either.left(chainData.chainHolder.getUUID());
+            }
+
+            if (either != null) {
+                String sourceItem = BuiltInRegistries.ITEM.getKey(chainData.sourceItem).toString();
+                linksTag.add(either.map(uuid -> {
+                    CompoundTag nbtCompound = new CompoundTag();
+                    nbtCompound.putUUID("UUID", uuid);
+                    nbtCompound.putString(SOURCE_ITEM_KEY, sourceItem);
+                    nbtCompound.putFloat("Slack", chainData.customSlack);
+                    if (!chainData.buntings.isEmpty()) {
+                        ListTag buntingList = new ListTag();
+                        for (ChainData.BuntingEntry entry : chainData.buntings) {
+                            CompoundTag bt = new CompoundTag();
+                            bt.putFloat("T", entry.t());
+                            bt.putString("Color", entry.color().getName());
+                            buntingList.add(bt);
+                        }
+                        nbtCompound.put("Buntings", buntingList);
+                    }
+                    if (!chainData.banners.isEmpty()) {
+                        ListTag bannerList = new ListTag();
+                        for (ChainData.BannerEntry entry : chainData.banners) {
+                            CompoundTag bt = new CompoundTag();
+                            bt.putFloat("T", entry.t());
+                            bt.put("Data", entry.data());
+                            bannerList.add(bt);
+                        }
+                        nbtCompound.put("Banners", bannerList);
+                    }
+                    if (!chainData.hangings.isEmpty()) {
+                        ListTag hangingList = new ListTag();
+                        for (ChainData.HangingEntry entry : chainData.hangings) {
+                            CompoundTag ht = new CompoundTag();
+                            ht.putFloat("T", entry.t());
+                            ht.putString("Block", entry.blockId().toString());
+                            hangingList.add(ht);
+                        }
+                        nbtCompound.put("Hangings", hangingList);
+                    }
+                    return nbtCompound;
+                }, blockPos -> {
+                    CompoundTag nbtCompound = new CompoundTag();
+                    nbtCompound.putInt("RelX", blockPos.getX());
+                    nbtCompound.putInt("RelY", blockPos.getY());
+                    nbtCompound.putInt("RelZ", blockPos.getZ());
+                    nbtCompound.putString(SOURCE_ITEM_KEY, sourceItem);
+                    nbtCompound.putFloat("Slack", chainData.customSlack);
+                    if (!chainData.buntings.isEmpty()) {
+                        ListTag buntingList = new ListTag();
+                        for (ChainData.BuntingEntry entry : chainData.buntings) {
+                            CompoundTag bt = new CompoundTag();
+                            bt.putFloat("T", entry.t());
+                            bt.putString("Color", entry.color().getName());
+                            buntingList.add(bt);
+                        }
+                        nbtCompound.put("Buntings", buntingList);
+                    }
+                    if (!chainData.banners.isEmpty()) {
+                        ListTag bannerList = new ListTag();
+                        for (ChainData.BannerEntry entry : chainData.banners) {
+                            CompoundTag bt = new CompoundTag();
+                            bt.putFloat("T", entry.t());
+                            bt.put("Data", entry.data());
+                            bannerList.add(bt);
+                        }
+                        nbtCompound.put("Banners", bannerList);
+                    }
+                    if (!chainData.hangings.isEmpty()) {
+                        ListTag hangingList = new ListTag();
+                        for (ChainData.HangingEntry entry : chainData.hangings) {
+                            CompoundTag ht = new CompoundTag();
+                            ht.putFloat("T", entry.t());
+                            ht.putString("Block", entry.blockId().toString());
+                            hangingList.add(ht);
+                        }
+                        nbtCompound.put("Hangings", hangingList);
+                    }
+                    return nbtCompound;
+                }));
+            }
+        }
+        if (!linksTag.isEmpty()) {
+            nbt.put(CHAINS_NBT_KEY, linksTag);
+        }
+    }
+    *///?}
 
     default void detachChain(ChainData chainData) {
         detachChain((HangingEntity & Chainable) this, chainData, true, true);

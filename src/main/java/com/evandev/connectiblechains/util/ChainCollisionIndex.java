@@ -1,17 +1,28 @@
 package com.evandev.connectiblechains.util;
 
 import com.evandev.connectiblechains.CommonClass;
+//? if <26.1 {
+/*import com.evandev.connectiblechains.compat.sable.SableHelper;
+*///?}
 import com.evandev.connectiblechains.entity.ChainKnotEntity;
 import com.evandev.connectiblechains.entity.Chainable;
+//? if <26.1 {
+/*import dev.ryanhcode.sable.companion.SubLevelAccess;
+*///?}
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+//? if >=26.1 {
 import net.minecraft.world.entity.Leashable;
+//?}
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+//? if <26.1 {
+/*import net.minecraft.world.phys.shapes.Shapes;
+*///?}
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,13 +43,17 @@ public final class ChainCollisionIndex {
     }
 
     private static ChainCollisionIndex of(Level level) {
-        return INDICES.computeIfAbsent(level, _ -> new ChainCollisionIndex());
+        return INDICES.computeIfAbsent(level, k -> new ChainCollisionIndex());
     }
 
     public static Vec3 chainAnchor(Entity entity) {
         if (entity instanceof ChainKnotEntity knot) return knot.getChainPos(1.0f);
+        //? if >=26.1 {
         if (entity instanceof Leashable leashable) return leashable.getLeashOffset(1.0f).add(entity.position());
         return entity.position();
+        //?} else {
+        /*return entity.getLeashOffset(1.0f).add(entity.position());
+        *///?}
     }
 
     public static void ensure(Level level, Entity owner, Entity holder, Chainable.ChainData chainData) {
@@ -51,6 +66,14 @@ public final class ChainCollisionIndex {
 
         Vec3 src = chainAnchor(owner);
         Vec3 dst = chainAnchor(holder);
+        //? if <26.1 {
+        /*SubLevelAccess srcSubLevel = SableHelper.getContaining(level, src);
+        SubLevelAccess dstSubLevel = SableHelper.getContaining(level, dst);
+        if (srcSubLevel != dstSubLevel) {
+            src = SableHelper.projectOutOfSubLevel(level, src);
+            dst = SableHelper.projectOutOfSubLevel(level, dst);
+        }
+        *///?}
         if (!Chainable.isValidChainDistance(src, dst)) {
             return;
         }
@@ -75,9 +98,9 @@ public final class ChainCollisionIndex {
 
         long[] bucketKeys = bucketKeysFor(shape.bounds());
         Entry entry = new Entry(owner, holder, shape, src, dst, slack, hangingsHash, bucketKeys, now);
-        index.byOwner.computeIfAbsent(ownerId, _ -> new ConcurrentHashMap<>()).put(holderId, entry);
+        index.byOwner.computeIfAbsent(ownerId, k -> new ConcurrentHashMap<>()).put(holderId, entry);
         for (long bucketKey : bucketKeys) {
-            index.buckets.computeIfAbsent(bucketKey, _ -> new CopyOnWriteArrayList<>()).add(entry);
+            index.buckets.computeIfAbsent(bucketKey, k -> new CopyOnWriteArrayList<>()).add(entry);
         }
     }
 
@@ -115,7 +138,11 @@ public final class ChainCollisionIndex {
         long diffX = (long) maxChunkX - minChunkX + 1;
         long diffZ = (long) maxChunkZ - minChunkZ + 1;
         if (diffX <= 0 || diffZ <= 0 || diffX > 32 || diffZ > 32 || diffX * diffZ > 512) {
+            //? if >=26.1 {
             return null;
+            //?} else {
+            /*return collectSubLevels(index, level, area, now, null);
+            *///?}
         }
 
         for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
@@ -141,6 +168,8 @@ public final class ChainCollisionIndex {
                 }
             }
         }
+        //? if <26.1
+        //collected = collectSubLevels(index, level, area, now, collected);
         return collected;
     }
 
@@ -167,7 +196,11 @@ public final class ChainCollisionIndex {
         long diffX = (long) maxChunkX - minChunkX + 1;
         long diffZ = (long) maxChunkZ - minChunkZ + 1;
         if (diffX <= 0 || diffZ <= 0 || diffX > 32 || diffZ > 32 || diffX * diffZ > 512) {
+            //? if >=26.1 {
             return false;
+            //?} else {
+            /*return scanSubLevels(index, level, area, now, hangingOnly);
+            *///?}
         }
 
         for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
@@ -191,8 +224,99 @@ public final class ChainCollisionIndex {
                 }
             }
         }
+        //? if >=26.1 {
+        return false;
+        //?} else {
+        /*return scanSubLevels(index, level, area, now, hangingOnly);
+        *///?}
+    }
+
+    //? if <26.1 {
+    /*@Nullable
+    private static List<VoxelShape> collectSubLevels(ChainCollisionIndex index, Level level, AABB area, long now, @Nullable List<VoxelShape> collected) {
+        for (SubLevelAccess subLevel : SableHelper.getAllIntersecting(level, area)) {
+            AABB localArea = SableHelper.toLocalAABB(subLevel, area);
+            int subMinChunkX = SectionPos.blockToSectionCoord(Mth.floor(localArea.minX));
+            int subMaxChunkX = SectionPos.blockToSectionCoord(Mth.floor(localArea.maxX));
+            int subMinChunkZ = SectionPos.blockToSectionCoord(Mth.floor(localArea.minZ));
+            int subMaxChunkZ = SectionPos.blockToSectionCoord(Mth.floor(localArea.maxZ));
+
+            long subDiffX = (long) subMaxChunkX - subMinChunkX + 1;
+            long subDiffZ = (long) subMaxChunkZ - subMinChunkZ + 1;
+            if (subDiffX <= 0 || subDiffZ <= 0 || subDiffX > 32 || subDiffZ > 32 || subDiffX * subDiffZ > 512) {
+                continue;
+            }
+
+            for (int chunkX = subMinChunkX; chunkX <= subMaxChunkX; chunkX++) {
+                for (int chunkZ = subMinChunkZ; chunkZ <= subMaxChunkZ; chunkZ++) {
+                    CopyOnWriteArrayList<Entry> bucket = index.buckets.get(ChunkPos.pack(chunkX, chunkZ));
+                    if (bucket == null) continue;
+
+                    for (Entry entry : bucket) {
+                        if (entry.isStale(now)) {
+                            index.discard(entry);
+                            continue;
+                        }
+
+                        ChainShapeBaker.ChainShape shape = entry.shape;
+                        if (!shape.bounds().intersects(localArea)) continue;
+
+                        for (AABB box : shape.boxes()) {
+                            if (!box.intersects(localArea)) continue;
+                            AABB globalBox = SableHelper.toGlobalAABB(subLevel, box);
+                            if (globalBox.intersects(area)) {
+                                if (collected == null) collected = new ArrayList<>();
+                                collected.add(Shapes.create(globalBox));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return collected;
+    }
+
+    private static boolean scanSubLevels(ChainCollisionIndex index, Level level, AABB area, long now, boolean hangingOnly) {
+        for (SubLevelAccess subLevel : SableHelper.getAllIntersecting(level, area)) {
+            AABB localArea = SableHelper.toLocalAABB(subLevel, area);
+            int subMinChunkX = SectionPos.blockToSectionCoord(Mth.floor(localArea.minX));
+            int subMaxChunkX = SectionPos.blockToSectionCoord(Mth.floor(localArea.maxX));
+            int subMinChunkZ = SectionPos.blockToSectionCoord(Mth.floor(localArea.minZ));
+            int subMaxChunkZ = SectionPos.blockToSectionCoord(Mth.floor(localArea.maxZ));
+
+            long subDiffX = (long) subMaxChunkX - subMinChunkX + 1;
+            long subDiffZ = (long) subMaxChunkZ - subMinChunkZ + 1;
+            if (subDiffX <= 0 || subDiffZ <= 0 || subDiffX > 32 || subDiffZ > 32 || subDiffX * subDiffZ > 512) {
+                continue;
+            }
+
+            for (int chunkX = subMinChunkX; chunkX <= subMaxChunkX; chunkX++) {
+                for (int chunkZ = subMinChunkZ; chunkZ <= subMaxChunkZ; chunkZ++) {
+                    CopyOnWriteArrayList<Entry> bucket = index.buckets.get(ChunkPos.pack(chunkX, chunkZ));
+                    if (bucket == null) continue;
+
+                    for (Entry entry : bucket) {
+                        if (entry.isStale(now)) {
+                            index.discard(entry);
+                            continue;
+                        }
+
+                        ChainShapeBaker.ChainShape shape = entry.shape;
+                        if (!shape.bounds().intersects(localArea)) continue;
+
+                        AABB[] boxes = shape.boxes();
+                        for (int i = hangingOnly ? shape.hangingFrom() : 0; i < boxes.length; i++) {
+                            if (!boxes[i].intersects(localArea)) continue;
+                            AABB globalBox = SableHelper.toGlobalAABB(subLevel, boxes[i]);
+                            if (globalBox.intersects(area)) return true;
+                        }
+                    }
+                }
+            }
+        }
         return false;
     }
+    *///?}
 
     private static int hangingsHash(Chainable.ChainData chainData) {
         if (!CommonClass.runtimeConfig.isHangingBlockCollisionsEnabled()) return 0;

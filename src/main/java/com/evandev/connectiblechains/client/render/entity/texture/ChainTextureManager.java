@@ -19,8 +19,13 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.item.Item;
+//? if <26.1 {
+/*import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+*///?}
 import org.jetbrains.annotations.NotNull;
-import org.jspecify.annotations.NonNull;
 
 import java.io.Reader;
 import java.util.HashMap;
@@ -55,7 +60,7 @@ public class ChainTextureManager extends SimplePreparableReloadListener<Map<Iden
     }
 
     @Override
-    protected Map<Identifier, CatenaryModel> prepare(@NonNull ResourceManager resourceManager, @NonNull ProfilerFiller profiler) {
+    protected Map<Identifier, CatenaryModel> prepare(@NotNull ResourceManager resourceManager, @NotNull ProfilerFiller profiler) {
         Map<Identifier, CatenaryModel> map = new HashMap<>();
         FileToIdConverter fileToIdConverter = FileToIdConverter.json(MODEL_FILE_LOCATION);
 
@@ -116,7 +121,20 @@ public class ChainTextureManager extends SimplePreparableReloadListener<Map<Iden
         return Optional.ofNullable(models.get(sourceItemId))
                 .flatMap(CatenaryModel::textures)
                 .flatMap(CatenaryModel.CatenaryTextures::chainTexture)
+                //? if >=26.1 {
                 .orElseGet(() -> defaultChainTextureId(sourceItemId)).withPath(p -> {
+                //?} else {
+                /*.orElseGet(() -> {
+                    if (sourceItem instanceof BlockItem blockItem) {
+                        try {
+                            TextureAtlasSprite sprite = Minecraft.getInstance().getBlockRenderer().getBlockModel(blockItem.getBlock().defaultBlockState()).getParticleIcon();
+                            return sprite.contents().name();
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    return defaultChainTextureId(sourceItemId);
+                }).withPath(p -> {
+                *///?}
                     String path = p;
                     if (!path.startsWith("textures/")) {
                         path = "textures/" + path;
@@ -133,7 +151,18 @@ public class ChainTextureManager extends SimplePreparableReloadListener<Map<Iden
         return Optional.ofNullable(models.get(sourceItemId))
                 .flatMap(CatenaryModel::textures)
                 .flatMap(CatenaryModel.CatenaryTextures::knotTexture)
+                //? if >=26.1 {
                 .orElseGet(() -> defaultKnotTextureId(sourceItemId)).withPath(p -> {
+                //?} else {
+                /*.orElseGet(() -> {
+                    try {
+                        TextureAtlasSprite sprite = Minecraft.getInstance().getItemRenderer().getItemModelShaper().getItemModel(new ItemStack(sourceItem)).getParticleIcon();
+                        return sprite.contents().name();
+                    } catch (Exception ignored) {
+                    }
+                    return defaultKnotTextureId(sourceItemId);
+                }).withPath(p -> {
+                *///?}
                     String path = p;
                     if (!path.startsWith("textures/")) {
                         path = "textures/" + path;

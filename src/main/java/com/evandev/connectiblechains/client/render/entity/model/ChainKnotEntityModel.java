@@ -1,17 +1,34 @@
 package com.evandev.connectiblechains.client.render.entity.model;
 
-import com.evandev.connectiblechains.client.render.entity.state.ChainKnotEntityRenderState;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.*;
-
+//? if >=26.1 {
+import com.evandev.connectiblechains.client.render.entity.state.ChainKnotEntityRenderState;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
+//?} else {
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.world.entity.Entity;
+import org.jetbrains.annotations.NotNull;
+*///?}
 
+//? if >=26.1 {
 public class ChainKnotEntityModel extends EntityModel<ChainKnotEntityRenderState> {
     public ChainKnotEntityModel(ModelPart root) {
         super(root, RenderTypes::entityCutoutCull);
     }
+//?} else {
+/*public class ChainKnotEntityModel<T extends Entity> extends EntityModel<T> {
+    private final ModelPart root;
+    private final ModelPart knot;
+
+    public ChainKnotEntityModel(ModelPart root) {
+        this.root = root;
+        this.knot = root.getChild("knot");
+    }
+*///?}
 
     public static LayerDefinition getTexturedModelData() {
         MeshDefinition meshdefinition = new MeshDefinition();
@@ -27,7 +44,20 @@ public class ChainKnotEntityModel extends EntityModel<ChainKnotEntityRenderState
         return LayerDefinition.create(meshdefinition, 16, 16);
     }
 
+    //? if >=26.1 {
     @Override
     public void setupAnim(ChainKnotEntityRenderState state) {
     }
+    //?} else {
+    /*@Override
+    public void setupAnim(@NotNull T entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
+        this.knot.yRot = netHeadYaw * (float) (Math.PI / 180.0);
+        this.knot.xRot = headPitch * (float) (Math.PI / 180.0);
+    }
+
+    @Override
+    public void renderToBuffer(@NotNull PoseStack poseStack, @NotNull VertexConsumer buffer, int packedLight, int packedOverlay, int color) {
+        this.root.render(poseStack, buffer, packedLight, packedOverlay, color);
+    }
+    *///?}
 }

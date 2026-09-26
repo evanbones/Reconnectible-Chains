@@ -23,7 +23,11 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
 
     @Override
     public boolean isDevelopmentEnvironment() {
+        //? if >=26.1 {
         return !FMLLoader.getCurrent().isProduction();
+        //?} else {
+        /^return !FMLLoader.isProduction();
+        ^///?}
     }
 
     @Override
@@ -33,7 +37,11 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
 
     @Override
     public boolean isPhysicalClient() {
+        //? if >=26.1 {
         return FMLLoader.getCurrent().getDist() == Dist.CLIENT;
+        //?} else {
+        /^return FMLLoader.getDist() == Dist.CLIENT;
+        ^///?}
     }
 }
 *///?}

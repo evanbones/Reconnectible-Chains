@@ -9,20 +9,36 @@ import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.ChainBreakC2SPacket;
 import com.evandev.connectiblechains.networking.packet.DecorationRemoveC2SPacket;
 import com.evandev.connectiblechains.util.ChainRaycastHelper;
+//? if >=26.1 {
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionResult;
+//?}
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+//? if >=26.1 {
+import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+//?} else {
+/^import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
+^///?}
 
 public class ConnectibleChainsModClient {
+    private static void sendToServer(CustomPacketPayload payload) {
+        //? if >=26.1 {
+        ClientPacketDistributor.sendToServer(payload);
+        //?} else {
+        /^PacketDistributor.sendToServer(payload);
+        ^///?}
+    }
+
     @EventBusSubscriber(modid = CommonClass.MODID, value = Dist.CLIENT)
     public static class ClientModBusEvents {
 
@@ -34,14 +50,22 @@ public class ConnectibleChainsModClient {
         }
 
         @SubscribeEvent
+        //? if >=26.1 {
         public static void registerReloadListeners(AddClientReloadListenersEvent event) {
+        //?} else {
+        /^public static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
+        ^///?}
             if (ClientInitializer.getInstance() == null) {
                 new ClientInitializer().onInitializeClient();
             }
+            //? if >=26.1 {
             event.addListener(
                     Identifier.fromNamespaceAndPath(CommonClass.MODID, "chain_textures"),
                     ClientInitializer.getInstance().getChainTextureManager()
             );
+            //?} else {
+            /^event.registerReloadListener(ClientInitializer.getInstance().getChainTextureManager());
+            ^///?}
         }
 
         @SubscribeEvent
@@ -79,14 +103,14 @@ public class ConnectibleChainsModClient {
         @SubscribeEvent
         public static void onLeftClickEmpty(PlayerInteractEvent.LeftClickEmpty event) {
             if (ChainRaycastHelper.tryBreakChain(event.getEntity())) {
-                ClientPacketDistributor.sendToServer(ChainBreakC2SPacket.INSTANCE);
+                sendToServer(ChainBreakC2SPacket.INSTANCE);
             }
         }
 
         @SubscribeEvent
         public static void onRightClickEmpty(PlayerInteractEvent.RightClickEmpty event) {
             if (ChainRaycastHelper.tryRemoveDecoration(event.getEntity(), event.getHand())) {
-                ClientPacketDistributor.sendToServer(DecorationRemoveC2SPacket.INSTANCE);
+                sendToServer(DecorationRemoveC2SPacket.INSTANCE);
                 //? if <=26.2
                 event.getEntity().swing(event.getHand());
                 //? if >26.2
@@ -94,10 +118,11 @@ public class ConnectibleChainsModClient {
             }
         }
 
+        //? if >=26.1 {
         @SubscribeEvent
         public static void onRightClickBlockEmpty(PlayerInteractEvent.RightClickBlock event) {
             if (ChainRaycastHelper.tryRemoveDecoration(event.getEntity(), event.getHand())) {
-                ClientPacketDistributor.sendToServer(DecorationRemoveC2SPacket.INSTANCE);
+                sendToServer(DecorationRemoveC2SPacket.INSTANCE);
                 //? if <=26.2
                 event.getEntity().swing(event.getHand());
                 //? if >26.2
@@ -106,6 +131,7 @@ public class ConnectibleChainsModClient {
                 event.setCancellationResult(InteractionResult.SUCCESS);
             }
         }
+        //?}
     }
 }
 *///?}

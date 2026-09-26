@@ -19,7 +19,9 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+//? if >=26.1 {
 import net.minecraft.server.permissions.Permissions;
+//?}
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -42,12 +44,20 @@ public class ConnectChainCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("connectchain")
+//? if >=26.1 {
                 .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
+//?} else {
+                /*.requires(source -> source.hasPermission(2))
+*///?}
                 .then(Commands.argument("pos1", BlockPosArgument.blockPos())
                         .then(Commands.argument("dir1", StringArgumentType.word())
                                 .then(Commands.argument("pos2", BlockPosArgument.blockPos())
                                         .then(Commands.argument("dir2", StringArgumentType.word())
+//? if >=26.1 {
                                                 .executes(context -> executeConnect(context, Items.IRON_CHAIN))
+//?} else {
+                                                /*.executes(context -> executeConnect(context, Items.CHAIN))
+*///?}
                                                 .then(Commands.argument("item", IdentifierArgument.id())
                                                         .suggests(CATENARY_ITEM_SUGGESTIONS)
                                                         .executes(context -> {

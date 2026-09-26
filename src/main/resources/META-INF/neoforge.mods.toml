@@ -8,6 +8,7 @@ modId = "${mod_id}"
 version = "${version}"
 displayName = "${mod_name}"
 iconFile = "${mod_id}.png"
+logoFile = "${mod_id}.png"
 credits = "${credits}"
 authors = "${mod_author}"
 description = '''${description}'''

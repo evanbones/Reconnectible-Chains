@@ -25,12 +25,21 @@ import java.util.function.Function;
 public class FabricNetworkHelper implements INetworkHelper {
 
     public static void init() {
+        //? if >=26.1 {
         PayloadTypeRegistry.clientboundPlay().register(ChainAttachS2CPacket.TYPE, ChainAttachS2CPacket.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(ConfigSyncPayload.TYPE, ConfigSyncPayload.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(ChainSlackSyncS2CPacket.TYPE, ChainSlackSyncS2CPacket.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(BuntingSyncS2CPacket.TYPE, BuntingSyncS2CPacket.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(BannerSyncS2CPacket.TYPE, BannerSyncS2CPacket.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(HangingSyncS2CPacket.TYPE, HangingSyncS2CPacket.STREAM_CODEC);
+        //?} else {
+        /*PayloadTypeRegistry.playS2C().register(ChainAttachS2CPacket.TYPE, ChainAttachS2CPacket.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(ConfigSyncPayload.TYPE, ConfigSyncPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(ChainSlackSyncS2CPacket.TYPE, ChainSlackSyncS2CPacket.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(BuntingSyncS2CPacket.TYPE, BuntingSyncS2CPacket.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(BannerSyncS2CPacket.TYPE, BannerSyncS2CPacket.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(HangingSyncS2CPacket.TYPE, HangingSyncS2CPacket.STREAM_CODEC);
+        *///?}
     }
 
     @Override

@@ -19,13 +19,21 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+//? if <26.1 {
+/^import com.evandev.connectiblechains.networking.packet.DecorationRemoveC2SPacket;
+import net.neoforged.neoforge.network.PacketDistributor;
+^///?}
 
 @Mod(CommonClass.MODID)
 public class ConnectibleChainsMod {
     public ConnectibleChainsMod(IEventBus modBus, ModContainer modContainer) {
         NeoForgeRegistryHelper.ENTITIES.register(modBus);
 
+        //? if >=26.1 {
         if (FMLEnvironment.getDist() == Dist.CLIENT) {
+        //?} else {
+        /^if (FMLEnvironment.dist == Dist.CLIENT) {
+        ^///?}
             ClientConfigSetup.register(modContainer);
         }
 
@@ -40,6 +48,18 @@ public class ConnectibleChainsMod {
     }
 
     private void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        //? if <26.1 {
+        /^if (event.getLevel().isClientSide()) {
+            if (ChainRaycastHelper.tryRemoveDecoration(event.getEntity(), event.getHand())) {
+                PacketDistributor.sendToServer(DecorationRemoveC2SPacket.INSTANCE);
+                event.getEntity().swing(event.getHand());
+                event.setCanceled(true);
+                event.setCancellationResult(InteractionResult.SUCCESS);
+                return;
+            }
+        }
+
+        ^///?}
         InteractionResult result = ChainItemCallbacks.chainUseEvent(event.getEntity(), event.getLevel(), event.getHand(), event.getHitVec());
 
         if (result.consumesAction() || result == InteractionResult.FAIL) {

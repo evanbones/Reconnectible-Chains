@@ -7,6 +7,8 @@ plugins {
 
 val minecraft = stonecutter.current.version
 val mcVersion = stonecutter.current.project.substringBeforeLast('-')
+val isLegacy = stonecutter.eval(minecraft, "<26.1")
+val javaVersion = property("deps.java_version") as String
 
 tasks.named<ProcessResources>("processResources") {
     fun prop(name: String) = project.property(name) as String
@@ -23,9 +25,10 @@ tasks.named<ProcessResources>("processResources") {
         this["neoforge_loader_version_range"] = prop("deps.neoforge_loader_version_range")
         this["neoforge_version"] = prop("deps.neoforge")
         this["yacl_version"] = prop("deps.yacl").substringBefore('+')
+        this["java_version"] = prop("deps.java_version")
     }
 
-    filesMatching(listOf("neoforge.mod.json", "META-INF/neoforge.mods.toml", "META-INF/mods.toml")) {
+    filesMatching(listOf("neoforge.mod.json", "META-INF/neoforge.mods.toml", "META-INF/mods.toml", "*.mixins.json")) {
         expand(props)
     }
 }
@@ -42,10 +45,11 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven {
-        name = "Terraformers (Mod Menu)"
+        name = "Terraformers (Mod Menu, EMI)"
         url = uri("https://maven.terraformersmc.com/releases/")
         content {
             includeGroupAndSubgroups("com.terraformersmc")
+            includeGroup("dev.emi")
         }
     }
     maven {
@@ -68,6 +72,13 @@ repositories {
         url = uri("https://maven.cassian.cc/")
         content {
             includeGroupAndSubgroups("cc.cassian")
+        }
+    }
+    maven {
+        name = "RyanHCode (Sable)"
+        url = uri("https://maven.ryanhcode.dev/releases")
+        content {
+            includeGroup("dev.ryanhcode.sable-companion")
         }
     }
     maven {
@@ -128,8 +139,30 @@ dependencies {
     // YACL
     implementation("dev.isxander:yet-another-config-lib:${property("deps.yacl")}")
 
-    // RRV
-    runtimeOnly("cc.cassian.rrv:reliable-recipe-viewer-neoforge:${property("deps.rrv")}")
+    if (isLegacy) {
+        // EMI
+        runtimeOnly("dev.emi:emi-neoforge:${property("deps.emi")}")
+
+        // Supplementaries
+        implementation("maven.modrinth:supplementaries:${property("deps.supplementaries")}")
+        implementation("maven.modrinth:moonlight:${property("deps.moonlight")}")
+
+        // Caverns and Chasms
+        implementation("maven.modrinth:blueprint:8.1.0")
+        implementation("maven.modrinth:caverns-and-chasms:3.0.0")
+
+        // Sable Companion
+        val sableCompanion = implementation("dev.ryanhcode.sable-companion:sable-companion-common-$mcVersion") {
+            version {
+                strictly("[${property("deps.sable_companion")},)")
+                prefer(property("deps.sable_companion") as String)
+            }
+        }
+        "jarJar"(sableCompanion!!)
+    } else {
+        // RRV
+        runtimeOnly("cc.cassian.rrv:reliable-recipe-viewer-neoforge:${property("deps.rrv")}")
+    }
 
     // Mixin Constraints
     compileOnly("com.moulberry:mixinconstraints:${property("deps.mixin_constraints")}")
@@ -147,18 +180,25 @@ stonecutter {
         direction = eval(current.version, ">=26.3")
         replace("poseStack.mulPose(", "poseStack.rotate(")
     }
+    replacements.string {
+        direction = eval(current.version, ">=26.1")
+        replace("ResourceLocation", "Identifier")
+        replace("BuiltInRegistries.ITEM.get(", "BuiltInRegistries.ITEM.getValue(")
+        replace("BuiltInRegistries.BLOCK.get(", "BuiltInRegistries.BLOCK.getValue(")
+        replace("ChunkPos.asLong(", "ChunkPos.pack(")
+    }
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(property("deps.java_version") as String)
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    toolchain.languageVersion = JavaLanguageVersion.of(javaVersion)
+    sourceCompatibility = JavaVersion.toVersion(javaVersion)
+    targetCompatibility = JavaVersion.toVersion(javaVersion)
     withSourcesJar()
 }
 
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
-    options.release = 25
+    options.release = javaVersion.toInt()
 }
 
 publishing {

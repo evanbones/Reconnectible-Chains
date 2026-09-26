@@ -13,7 +13,13 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
+//? if >=26.1 {
 import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
+//?} else {
+/*import net.fabricmc.fabric.api.client.rendering.v1.EntityModelLayerRegistry;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.util.profiling.ProfilerFiller;
+*///?}
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.resources.Identifier;
@@ -45,10 +51,17 @@ public class ConnectibleChainsModClient implements ClientModInitializer {
                 return Identifier.fromNamespaceAndPath(CommonClass.MODID, "chain_textures");
             }
 
+            //? if >=26.1 {
             @Override
             public @NotNull CompletableFuture<Void> reload(PreparableReloadListener.@NotNull SharedState state, @NotNull Executor prepareExecutor, PreparableReloadListener.@NotNull PreparationBarrier barrier, @NotNull Executor applyExecutor) {
                 return ClientInitializer.getInstance().getChainTextureManager().reload(state, prepareExecutor, barrier, applyExecutor);
             }
+            //?} else {
+            /*@Override
+            public @NotNull CompletableFuture<Void> reload(PreparableReloadListener.@NotNull PreparationBarrier synchronizer, @NotNull ResourceManager manager, @NotNull ProfilerFiller prepareProfiler, @NotNull ProfilerFiller applyProfiler, @NotNull Executor prepareExecutor, @NotNull Executor applyExecutor) {
+                return ClientInitializer.getInstance().getChainTextureManager().reload(synchronizer, manager, prepareProfiler, applyProfiler, prepareExecutor, applyExecutor);
+            }
+            *///?}
         });
 
         ClientPlayConnectionEvents.INIT.register((handler, client) -> {
@@ -64,7 +77,11 @@ public class ConnectibleChainsModClient implements ClientModInitializer {
             return renderer;
         });
 
+        //? if >=26.1 {
         ModelLayerRegistry.registerModelLayer(ClientInitializer.CHAIN_KNOT, ClientInitializer::getChainKnotLayerDefinition);
+        //?} else {
+        /*EntityModelLayerRegistry.registerModelLayer(ClientInitializer.CHAIN_KNOT, ClientInitializer::getChainKnotLayerDefinition);
+        *///?}
     }
 }
 //?}

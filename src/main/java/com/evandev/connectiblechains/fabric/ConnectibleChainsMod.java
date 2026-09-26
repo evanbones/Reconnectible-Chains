@@ -17,6 +17,8 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.world.InteractionResult;
+//? if <26.1
+//import net.minecraft.world.InteractionResultHolder;
 
 public class ConnectibleChainsMod implements ModInitializer {
 
@@ -25,8 +27,13 @@ public class ConnectibleChainsMod implements ModInitializer {
         FabricNetworkHelper.init();
         CommonClass.init();
 
+        //? if >=26.1 {
         PayloadTypeRegistry.serverboundPlay().register(ChainBreakC2SPacket.TYPE, ChainBreakC2SPacket.STREAM_CODEC);
         PayloadTypeRegistry.serverboundPlay().register(DecorationRemoveC2SPacket.TYPE, DecorationRemoveC2SPacket.STREAM_CODEC);
+        //?} else {
+        /*PayloadTypeRegistry.playC2S().register(ChainBreakC2SPacket.TYPE, ChainBreakC2SPacket.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(DecorationRemoveC2SPacket.TYPE, DecorationRemoveC2SPacket.STREAM_CODEC);
+        *///?}
 
         ServerPlayNetworking.registerGlobalReceiver(ChainBreakC2SPacket.TYPE, (payload, context) -> {
             context.server().execute(() -> {
@@ -41,19 +48,15 @@ public class ConnectibleChainsMod implements ModInitializer {
         UseBlockCallback.EVENT.register(ChainItemCallbacks::chainUseEvent);
 
         UseItemCallback.EVENT.register((player, level, hand) -> {
-            if (ChainRaycastHelper.tryPlaceBunting(player, hand)) {
-                return InteractionResult.SUCCESS;
-            }
-            if (ChainRaycastHelper.tryPlaceBanner(player, hand)) {
-                return InteractionResult.SUCCESS;
-            }
-            if (ChainRaycastHelper.tryPlaceHanging(player, hand)) {
-                return InteractionResult.SUCCESS;
-            }
-            if (ChainRaycastHelper.tryAdjustSlack(player, hand)) {
-                return InteractionResult.SUCCESS;
-            }
-            return InteractionResult.PASS;
+            boolean handled = ChainRaycastHelper.tryPlaceBunting(player, hand)
+                    || ChainRaycastHelper.tryPlaceBanner(player, hand)
+                    || ChainRaycastHelper.tryPlaceHanging(player, hand)
+                    || ChainRaycastHelper.tryAdjustSlack(player, hand);
+            //? if >=26.1 {
+            return handled ? InteractionResult.SUCCESS : InteractionResult.PASS;
+            //?} else {
+            /*return handled ? InteractionResultHolder.success(player.getItemInHand(hand)) : InteractionResultHolder.pass(player.getItemInHand(hand));
+            *///?}
         });
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->

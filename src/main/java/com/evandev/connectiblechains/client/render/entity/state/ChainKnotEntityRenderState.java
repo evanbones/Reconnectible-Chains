@@ -1,6 +1,7 @@
 package com.evandev.connectiblechains.client.render.entity.state;
 
 import com.evandev.connectiblechains.entity.Chainable;
+//? if >=26.1
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.Item;
@@ -9,7 +10,11 @@ import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 import java.util.List;
 
+//? if >=26.1 {
 public class ChainKnotEntityRenderState extends EntityRenderState {
+//?} else {
+/*public class ChainKnotEntityRenderState {
+*///?}
 
     public final List<ChainData> chainDataSet = new ArrayList<>();
     private final List<ChainData> pool = new ArrayList<>();

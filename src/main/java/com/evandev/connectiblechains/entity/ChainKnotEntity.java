@@ -1,15 +1,24 @@
 package com.evandev.connectiblechains.entity;
 
 import com.evandev.connectiblechains.CommonClass;
+//? if <26.1 {
+/*import com.evandev.connectiblechains.compat.sable.SableHelper;
+*///?}
 import com.evandev.connectiblechains.item.ChainItemCallbacks;
 import com.evandev.connectiblechains.networking.packet.*;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.evandev.connectiblechains.util.ChainCollisionIndex;
 import com.evandev.connectiblechains.util.ChainTracker;
+//? if <26.1 {
+/*import com.evandev.connectiblechains.util.MathHelper;
+*///?}
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+//? if <26.1 {
+/*import net.minecraft.nbt.CompoundTag;
+*///?}
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
@@ -31,14 +40,15 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
+//? if >=26.1 {
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+//?}
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jspecify.annotations.NonNull;
 
 import java.util.HashSet;
 import java.util.List;
@@ -55,7 +65,11 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
     public ChainKnotEntity(EntityType<ChainKnotEntity> entityType, Level level) {
         super(entityType, level);
+//? if >=26.1 {
         sourceItem = Items.IRON_CHAIN;
+//?} else {
+        /*sourceItem = Items.CHAIN;
+*///?}
     }
 
     public ChainKnotEntity(Level level, BlockPos pos, @NotNull Item sourceItem, Direction face) {
@@ -140,23 +154,30 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
-    protected void defineSynchedData(SynchedEntityData.@NonNull Builder builder) {
+    protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
+        //? if >=26.1
         super.defineSynchedData(builder);
     }
 
     @Override
     public void tick() {
+//? if >=26.1 {
         if (!this.level().isClientSide() && !this.survives()) {
             this.discard();
             this.dropItem((ServerLevel) this.level(), null);
         }
+//?}
         super.tick();
 
         ChainTracker.register(this.level(), this);
 
         if (this.level() instanceof ServerLevel serverWorld) {
             if (!this.isRemoved() && !this.survives()) {
+//? if >=26.1 {
                 this.dropItem(serverWorld, null);
+//?} else {
+                /*this.dropItem(null);
+*///?}
                 this.discard();
                 return;
             }
@@ -276,7 +297,11 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
-    public @NotNull InteractionResult interact(Player player, @NotNull InteractionHand hand, @NonNull Vec3 location) {
+//? if >=26.1 {
+    public @NotNull InteractionResult interact(Player player, @NotNull InteractionHand hand, @NotNull Vec3 location) {
+//?} else {
+    /*public @NotNull InteractionResult interact(Player player, @NotNull InteractionHand hand) {
+*///?}
         ItemStack handStack = player.getItemInHand(hand);
         if (level().isClientSide()) {
             ChainData chainDataForPlayer = getChainData(player);
@@ -341,7 +366,11 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
                 if (player.isCreative()) detachAllChainsWithoutDrop();
                 else detachAllChains();
                 this.remove(RemovalReason.DISCARDED);
+//? if >=26.1 {
                 this.dropItem((ServerLevel) this.level(), player);
+//?} else {
+                /*this.dropItem(player);
+*///?}
                 return InteractionResult.SUCCESS;
             }
         }
@@ -355,17 +384,33 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
+//? if >=26.1 {
     public void addAdditionalSaveData(@NotNull ValueOutput output) {
         super.addAdditionalSaveData(output);
         this.writeChainDataSetToNbt(output, this.chainDataSet);
         output.putInt("AttachedFace", this.attachedFace.get3DDataValue());
+//?} else {
+    /*public void addAdditionalSaveData(@NotNull CompoundTag nbt) {
+        super.addAdditionalSaveData(nbt);
+        this.writeChainDataSetToNbt(nbt, this.chainDataSet);
+        nbt.putInt("AttachedFace", this.attachedFace.get3DDataValue());
+*///?}
     }
 
     @Override
+//? if >=26.1 {
     public void readAdditionalSaveData(@NotNull ValueInput input) {
         super.readAdditionalSaveData(input);
         this.readChainDataFromNbt(input);
         input.getInt("AttachedFace").ifPresent(val -> this.attachedFace = Direction.from3DDataValue(val));
+//?} else {
+    /*public void readAdditionalSaveData(@NotNull CompoundTag nbt) {
+        super.readAdditionalSaveData(nbt);
+        this.readChainDataFromNbt(nbt);
+        if (nbt.contains("AttachedFace")) {
+            this.attachedFace = Direction.from3DDataValue(nbt.getInt("AttachedFace"));
+        }
+*///?}
         this.recalculateBoundingBox();
     }
 
@@ -374,7 +419,11 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         double maxRange = Chainable.getMaxChainLength();
         double effectiveRange = maxRange + 64.0;
 
+//? if >=26.1 {
         double d = this.getBoundingBox().getSize();
+//?} else {
+        /*double d = this.getBoundingBoxForCulling().getSize();
+*///?}
         if (Double.isNaN(d)) {
             d = 1.0D;
         }
@@ -386,6 +435,38 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
         return distance < d * d || super.shouldRenderAtSqrDistance(distance);
     }
+
+//? if <26.1 {
+    /*@Override
+    public @NotNull AABB getBoundingBoxForCulling() {
+        AABB result = super.getBoundingBoxForCulling();
+        ChainData[] chains = this.chainDataArray;
+        if (chains.length == 0) {
+            return result;
+        }
+
+        for (ChainData chainData : chains) {
+            Entity entity = chainData.getResolvedHolder();
+            if (entity == null) {
+                entity = this.getChainHolder(chainData);
+            }
+            if (entity == null) continue;
+
+            Vec3 holderPos = SableHelper.getHolderPosInEntitySpace(this.level(), this, entity);
+            if (!Chainable.isValidChainDistance(this.position(), holderPos)) continue;
+
+            AABB holderBox = entity.getBoundingBox().move(holderPos.subtract(entity.position()));
+            result = result.minmax(holderBox);
+
+            double distance = this.position().distanceTo(holderPos);
+            double dy = holderPos.y() - this.getY();
+            double sag = Math.abs(MathHelper.drip2(distance / 2.0, distance, dy, chainData.getSlack()));
+            double minY = Math.min(this.getY(), holderPos.y()) - sag - 1.0;
+            result = result.minmax(new AABB(this.getX(), minY, this.getZ(), this.getX(), minY, this.getZ()));
+        }
+        return result.inflate(1.0);
+    }
+*///?}
 
     @Override
     protected @NotNull AABB calculateBoundingBox(@NotNull BlockPos pos, @NotNull Direction direction) {
@@ -447,7 +528,11 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
     }
 
     @Override
-    public void dropItem(@NonNull ServerLevel level, @Nullable Entity breaker) {
+//? if >=26.1 {
+    public void dropItem(@NotNull ServerLevel level, @Nullable Entity breaker) {
+//?} else {
+    /*public void dropItem(@Nullable Entity breaker) {
+*///?}
         this.playSound(getSourceBlockSoundGroup().getBreakSound(), 1.0F, 1.0F);
     }
 
@@ -517,7 +602,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
         AABB aabb = this.getBoundingBox();
         BlockPos bestPos = this.blockPosition();
         int best = Integer.MIN_VALUE;
-
+//? if >=26.1 {
         if (this.attachedFace != null) {
             BlockPos facingPos = this.blockPosition().relative(this.attachedFace);
             int facingBrightness = Math.max(
@@ -528,6 +613,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
                 bestPos = facingPos;
             }
         }
+//?}
 
         for (BlockPos pos : BlockPos.betweenClosed(
                 BlockPos.containing(aabb.minX, aabb.minY, aabb.minZ),
