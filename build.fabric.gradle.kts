@@ -144,6 +144,10 @@ tasks {
         exclude("**/neoforge.mods.toml", "**/mods.toml")
     }
 
+    jar {
+        dependsOn("postProcessMainResources")
+    }
+
     register<Copy>("buildAndCollect") {
         group = "build"
         from(loomx.modJar.map { it.archiveFile })

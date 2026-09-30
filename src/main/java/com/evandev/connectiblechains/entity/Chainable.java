@@ -214,10 +214,7 @@ public interface Chainable {
                     Entity chainHolder = serverWorld.getEntity(optionalUUID.get());
                     if (chainHolder != null) {
                         ChainData newChainData = new ChainData(chainHolder, chainData.sourceItem);
-                        newChainData.customSlack = chainData.customSlack;
-                        newChainData.buntings.addAll(chainData.buntings);
-                        newChainData.banners.addAll(chainData.banners);
-                        newChainData.hangings.addAll(chainData.hangings);
+                        newChainData.copyStateFrom(chainData);
                         entity.replaceChainData(chainData, null);
                         attachChain(entity, newChainData, null, true);
                     }
@@ -231,15 +228,25 @@ public interface Chainable {
                     ChainKnotEntity chainHolder = ChainKnotEntity.getOrNull(serverWorld, targetPos);
                     if (chainHolder != null) {
                         ChainData newChainData = new ChainData(chainHolder, chainData.sourceItem);
-                        newChainData.customSlack = chainData.customSlack;
-                        newChainData.buntings.addAll(chainData.buntings);
-                        newChainData.banners.addAll(chainData.banners);
-                        newChainData.hangings.addAll(chainData.hangings);
+                        newChainData.copyStateFrom(chainData);
                         entity.replaceChainData(chainData, null);
                         attachChain(entity, newChainData, null, true);
                     }
                 }
             }
+        }
+    }
+
+    private static <E extends HangingEntity & Chainable> void releaseUnloadedHolders(ServerLevel level, E entity, HashSet<ChainData> chainDataSet) {
+        for (ChainData chainData : new HashSet<>(chainDataSet)) {
+            if (!(chainData.chainHolder instanceof ChainKnotEntity knot) || !knot.isRemoved()) continue;
+            Entity.RemovalReason reason = knot.getRemovalReason();
+            if (reason == null || reason.shouldDestroy()) continue;
+
+            ChainData unresolved = new ChainData(Either.right(knot.getPos().subtract(entity.getPos())), chainData.sourceItem);
+            unresolved.copyStateFrom(chainData);
+            entity.replaceChainData(chainData, unresolved);
+            Services.NETWORK.sendToAllClients(level.getServer(), new ChainAttachS2CPacket(entity, knot, null, chainData.sourceItem));
         }
     }
 
@@ -345,6 +352,7 @@ public interface Chainable {
         HashSet<ChainData> chainDataSet = entity.getChainDataSet();
         if (chainDataSet.isEmpty()) return;
 
+        releaseUnloadedHolders(level, entity, chainDataSet);
         resolveChainDataSet(entity, chainDataSet);
 
         for (ChainData chainData : new HashSet<>(chainDataSet)) {
@@ -419,6 +427,10 @@ public interface Chainable {
         }
 
         if (chainData.chainHolder != null) {
+            if (chainData.chainHolder.isRemoved() && entity.level().isClientSide()) {
+                Entity retracked = entity.level().getEntity(chainData.chainHolder.getId());
+                if (retracked != null) chainData.setChainHolder(retracked);
+            }
             return chainData.chainHolder;
         }
 
@@ -784,7 +796,14 @@ public interface Chainable {
         }
 
         public boolean needsResolution() {
-            return chainHolder == null && unresolvedChainHolderId != 0;
+            return chainHolder == null ? unresolvedChainHolderId != 0 : chainHolder.isRemoved();
+        }
+
+        public void copyStateFrom(ChainData other) {
+            customSlack = other.customSlack;
+            buntings.addAll(other.buntings);
+            banners.addAll(other.banners);
+            hangings.addAll(other.hangings);
         }
 
         public SoundType getSourceBlockSoundGroup() {

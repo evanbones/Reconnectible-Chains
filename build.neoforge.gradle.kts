@@ -123,6 +123,10 @@ tasks {
         exclude("**/fabric.mod.json", "**/*.accesswidener", "**/mods.toml")
     }
 
+    jar {
+        dependsOn("postProcessMainResources")
+    }
+
     named("createMinecraftArtifacts") {
         dependsOn("stonecutterGenerate")
     }

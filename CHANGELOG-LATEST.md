@@ -1,1 +1,3 @@
-- Switched to stonecutter build for 1.21.
+### Fixed
+
+- Hopefully fixed issues with chain knots unloading and causing a desync.
