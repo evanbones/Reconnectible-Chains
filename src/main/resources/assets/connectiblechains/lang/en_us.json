@@ -22,6 +22,10 @@
   "config.connectiblechains.collisionsEnabled.tooltip": "If disabled, chains will not have a collision box and entities can pass through them.",
   "config.connectiblechains.hangingBlockCollisions": "Enable Hanging Block Collisions",
   "config.connectiblechains.hangingBlockCollisions.tooltip": "If enabled, blocks hung on a chain (such as lanterns) get their own collision box. Requires chain collisions to be enabled.",
+  "config.connectiblechains.chainSlowdown": "Slow Down on Chains",
+  "config.connectiblechains.chainSlowdown.tooltip": "Entities walking along a chain or rope move slower, like on Supplementaries ropes. Requires chain collisions to be enabled.",
+  "config.connectiblechains.chainWobble": "Wobble When Walking on Chains",
+  "config.connectiblechains.chainWobble.tooltip": "Sway the camera slightly while walking along a chain or rope. Requires chain collisions to be enabled.",
   "config.connectiblechains.debugDraw": "Debug Chain Rendering",
   "config.connectiblechains.debugDraw.tooltip": "If enabled, shows debug vectors and entity counts for chains. Typically used for development.",
 

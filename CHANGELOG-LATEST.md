@@ -1,3 +1,3 @@
-### Fixed
+### Added
 
-- Hopefully fixed issues with chain knots unloading and causing a desync.
+- Walking along a chain or rope with chain collisions enabled now sways the camera, like Supplementaries ropes.

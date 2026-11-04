@@ -87,6 +87,20 @@ public class YaclConfigIntegration {
                 .build());
 
         generalCategory.option(Option.<Boolean>createBuilder()
+                .name(Component.translatable("config.connectiblechains.chainSlowdown"))
+                .description(OptionDescription.of(Component.translatable("config.connectiblechains.chainSlowdown.tooltip")))
+                .binding(true, config::isChainSlowdownEnabled, config::setChainSlowdownEnabled)
+                .controller(TickBoxControllerBuilder::create)
+                .build());
+
+        generalCategory.option(Option.<Boolean>createBuilder()
+                .name(Component.translatable("config.connectiblechains.chainWobble"))
+                .description(OptionDescription.of(Component.translatable("config.connectiblechains.chainWobble.tooltip")))
+                .binding(true, config::isChainWobbleEnabled, config::setChainWobbleEnabled)
+                .controller(TickBoxControllerBuilder::create)
+                .build());
+
+        generalCategory.option(Option.<Boolean>createBuilder()
                 .name(Component.translatable("config.connectiblechains.debugDraw"))
                 .description(OptionDescription.of(Component.translatable("config.connectiblechains.debugDraw.tooltip")))
                 .binding(Services.PLATFORM.isDevelopmentEnvironment(), config::doDebugDraw, config::setDebugDraw)

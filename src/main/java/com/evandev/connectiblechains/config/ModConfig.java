@@ -24,6 +24,8 @@ public class ModConfig {
     private boolean showRangeWarningHud = true;
     private boolean collisionsEnabled = true;
     private boolean hangingBlockCollisions = true;
+    private boolean chainWobble = true;
+    private boolean chainSlowdown = true;
     private boolean debugDraw = false;
 
     public static ModConfig get() {
@@ -112,8 +114,24 @@ public class ModConfig {
         this.hangingBlockCollisions = hangingBlockCollisions;
     }
 
+    public boolean isChainWobbleEnabled() {
+        return chainWobble;
+    }
+
+    public void setChainWobbleEnabled(boolean chainWobble) {
+        this.chainWobble = chainWobble;
+    }
+
+    public boolean isChainSlowdownEnabled() {
+        return chainSlowdown;
+    }
+
+    public void setChainSlowdownEnabled(boolean chainSlowdown) {
+        this.chainSlowdown = chainSlowdown;
+    }
+
     public void syncToClient(ServerPlayer player) {
-        Services.NETWORK.sendToClient(player, new ConfigSyncPayload(chainHangAmount, maxChainRange, collisionsEnabled, hangingBlockCollisions));
+        Services.NETWORK.sendToClient(player, new ConfigSyncPayload(chainHangAmount, maxChainRange, collisionsEnabled, hangingBlockCollisions, chainSlowdown));
     }
 
     public ModConfig copyFrom(ModConfig config) {
@@ -124,6 +142,8 @@ public class ModConfig {
         this.showRangeWarningHud = config.showRangeWarningHud;
         this.collisionsEnabled = config.collisionsEnabled;
         this.hangingBlockCollisions = config.hangingBlockCollisions;
+        this.chainWobble = config.chainWobble;
+        this.chainSlowdown = config.chainSlowdown;
         this.debugDraw = config.debugDraw;
         return this;
     }

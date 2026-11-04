@@ -12,7 +12,8 @@ import org.jetbrains.annotations.NotNull;
 
 public record ConfigSyncPayload(float chainHangAmount, int maxChainRange,
                                 boolean collisionsEnabled,
-                                boolean hangingBlockCollisions) implements CustomPacketPayload {
+                                boolean hangingBlockCollisions,
+                                boolean chainSlowdown) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<ConfigSyncPayload> TYPE = new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(CommonClass.MODID, "config_sync"));
 
@@ -21,6 +22,7 @@ public record ConfigSyncPayload(float chainHangAmount, int maxChainRange,
             ByteBufCodecs.INT, ConfigSyncPayload::maxChainRange,
             ByteBufCodecs.BOOL, ConfigSyncPayload::collisionsEnabled,
             ByteBufCodecs.BOOL, ConfigSyncPayload::hangingBlockCollisions,
+            ByteBufCodecs.BOOL, ConfigSyncPayload::chainSlowdown,
             ConfigSyncPayload::new
     );
 
@@ -31,6 +33,7 @@ public record ConfigSyncPayload(float chainHangAmount, int maxChainRange,
             CommonClass.runtimeConfig.setMaxChainRange(payload.maxChainRange());
             CommonClass.runtimeConfig.setCollisionsEnabled(payload.collisionsEnabled());
             CommonClass.runtimeConfig.setHangingBlockCollisionsEnabled(payload.hangingBlockCollisions());
+            CommonClass.runtimeConfig.setChainSlowdownEnabled(payload.chainSlowdown());
             ChainCollisionIndex.clearAll();
 
             if (ClientInitializer.getInstance() != null) {

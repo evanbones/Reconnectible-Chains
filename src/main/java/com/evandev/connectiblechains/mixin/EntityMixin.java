@@ -1,5 +1,6 @@
 package com.evandev.connectiblechains.mixin;
 
+import com.evandev.connectiblechains.CommonClass;
 import com.evandev.connectiblechains.util.ChainCollisionIndex;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -8,12 +9,22 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
 import java.util.List;
 
 @Mixin(Entity.class)
 public class EntityMixin {
+
+    @Unique
+    private static final float CHAIN_SPEED_FACTOR = 0.7F;
+
+    @ModifyReturnValue(method = "getBlockSpeedFactor", at = @At("RETURN"))
+    private float connectiblechains$slowOnChain(float original) {
+        if (!CommonClass.runtimeConfig.isChainSlowdownEnabled()) return original;
+        return ChainCollisionIndex.isStandingOnChain((Entity) (Object) this) ? original * CHAIN_SPEED_FACTOR : original;
+    }
 
 //? if <=26.1 {
     /*@ModifyReturnValue(method = "collectColliders", at = @At("RETURN"))

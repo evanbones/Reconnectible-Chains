@@ -35,6 +35,7 @@ public final class ChainCollisionIndex {
     private static final Map<Level, ChainCollisionIndex> INDICES = Collections.synchronizedMap(new WeakHashMap<>());
     private static final double POSITION_EPSILON = 1.0E-8;
     private static final long LEASE_TICKS = 3;
+    private static final double FOOT_PROBE = 0.25;
 
     private final Map<Integer, Map<Integer, Entry>> byOwner = new ConcurrentHashMap<>();
     private final Map<Long, CopyOnWriteArrayList<Entry>> buckets = new ConcurrentHashMap<>();
@@ -174,15 +175,22 @@ public final class ChainCollisionIndex {
     }
 
     public static boolean intersects(Level level, AABB area) {
-        return scan(level, area, false);
+        return scan(level, area, Part.ALL);
+    }
+
+    public static boolean isStandingOnChain(Entity entity) {
+        AABB box = entity.getBoundingBox();
+        AABB feet = new AABB(box.minX, box.minY - FOOT_PROBE, box.minZ, box.maxX, box.minY, box.maxZ);
+        return scan(entity.level(), feet, Part.CHAIN)
+                && !entity.level().getBlockCollisions(entity, feet).iterator().hasNext();
     }
 
     public static boolean intersectsHangingBlock(Level level, AABB area) {
         if (!CommonClass.runtimeConfig.isHangingBlockCollisionsEnabled()) return false;
-        return scan(level, area, true);
+        return scan(level, area, Part.HANGING);
     }
 
-    private static boolean scan(Level level, AABB area, boolean hangingOnly) {
+    private static boolean scan(Level level, AABB area, Part part) {
         ChainCollisionIndex index = INDICES.get(level);
         if (index == null || index.buckets.isEmpty()) return false;
 
@@ -199,7 +207,7 @@ public final class ChainCollisionIndex {
             //? if >=26.1 {
             return false;
             //?} else {
-            /*return scanSubLevels(index, level, area, now, hangingOnly);
+            /*return scanSubLevels(index, level, area, now, part);
             *///?}
         }
 
@@ -218,7 +226,7 @@ public final class ChainCollisionIndex {
                     if (!shape.bounds().intersects(area)) continue;
 
                     AABB[] boxes = shape.boxes();
-                    for (int i = hangingOnly ? shape.hangingFrom() : 0; i < boxes.length; i++) {
+                    for (int i = part.from(shape); i < part.to(shape); i++) {
                         if (boxes[i].intersects(area)) return true;
                     }
                 }
@@ -227,7 +235,7 @@ public final class ChainCollisionIndex {
         //? if >=26.1 {
         return false;
         //?} else {
-        /*return scanSubLevels(index, level, area, now, hangingOnly);
+        /*return scanSubLevels(index, level, area, now, part);
         *///?}
     }
 
@@ -276,7 +284,7 @@ public final class ChainCollisionIndex {
         return collected;
     }
 
-    private static boolean scanSubLevels(ChainCollisionIndex index, Level level, AABB area, long now, boolean hangingOnly) {
+    private static boolean scanSubLevels(ChainCollisionIndex index, Level level, AABB area, long now, Part part) {
         for (SubLevelAccess subLevel : SableHelper.getAllIntersecting(level, area)) {
             AABB localArea = SableHelper.toLocalAABB(subLevel, area);
             int subMinChunkX = SectionPos.blockToSectionCoord(Mth.floor(localArea.minX));
@@ -305,7 +313,7 @@ public final class ChainCollisionIndex {
                         if (!shape.bounds().intersects(localArea)) continue;
 
                         AABB[] boxes = shape.boxes();
-                        for (int i = hangingOnly ? shape.hangingFrom() : 0; i < boxes.length; i++) {
+                        for (int i = part.from(shape); i < part.to(shape); i++) {
                             if (!boxes[i].intersects(localArea)) continue;
                             AABB globalBox = SableHelper.toGlobalAABB(subLevel, boxes[i]);
                             if (globalBox.intersects(area)) return true;
@@ -317,6 +325,18 @@ public final class ChainCollisionIndex {
         return false;
     }
     *///?}
+
+    private enum Part {
+        ALL, CHAIN, HANGING;
+
+        int from(ChainShapeBaker.ChainShape shape) {
+            return this == HANGING ? shape.hangingFrom() : 0;
+        }
+
+        int to(ChainShapeBaker.ChainShape shape) {
+            return this == CHAIN ? shape.hangingFrom() : shape.boxes().length;
+        }
+    }
 
     private static int hangingsHash(Chainable.ChainData chainData) {
         if (!CommonClass.runtimeConfig.isHangingBlockCollisionsEnabled()) return 0;

@@ -11,6 +11,7 @@
     "compat.lithium.LithiumEntityCollisionsMixin"
   ],
   "client": [
+    "GameRendererMixin"
   ],
   "server": [],
   "injectors": {
