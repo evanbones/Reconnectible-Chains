@@ -49,7 +49,7 @@ public class CrossCatenaryRenderer extends CatenaryRenderer {
         float f0 = 0F, f1 = 1F;
         float uvv0 = 0F, uvv1 = Math.abs(endPosition.y()) / CHAIN_SCALE;
 
-        addDoubleSidedQuad(builder, f0, f1, uv.x0() / 16f, uv.x1() / 16f, uvv0, uvv1, vert00, vert01, vert11, vert10);
+        addQuad(builder, f0, f1, uv.x0() / 16f, uv.x1() / 16f, uvv0, uvv1, vert00, vert01, vert11, vert10);
     }
 
     private void buildFace(ChainModel.Builder builder, Vector3f endPosition, float angle, UVRect uv, float slack) {
@@ -106,7 +106,7 @@ public class CrossCatenaryRenderer extends CatenaryRenderer {
             uvv0 = uvv1;
             uvv1 = uvv0 + actualSegmentLength / CHAIN_SCALE;
 
-            addDoubleSidedQuad(builder, f0, f1, uv.x0() / 16f, uv.x1() / 16f, uvv0, uvv1, vert00, vert01, vert11, vert10);
+            addQuad(builder, f0, f1, uv.x0() / 16f, uv.x1() / 16f, uvv0, uvv1, vert00, vert01, vert11, vert10);
 
             if (x >= distanceXZ) {
                 break;

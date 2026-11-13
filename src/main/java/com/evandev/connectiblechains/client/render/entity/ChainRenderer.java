@@ -23,22 +23,32 @@ public class ChainRenderer {
 
     private final BakeKey lookupKey = new BakeKey();
 
-    public void renderBaked(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack matrices, Vector3f chainVec, float slack, int blockLight0, int blockLight1, int skyLight0, int skyLight1, int tintColor) {
+    public void renderBaked(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack.Pose pose, Vector3f chainVec, float slack, int blockLight0, int blockLight1, int skyLight0, int skyLight1, int tintColor) {
         if (!isFinite(chainVec)) return;
+
         lookupKey.set(chainVec, renderer, slack);
 
         ChainModel model = models.get(lookupKey);
         if (model == null) {
+            BakeKey key = new BakeKey().set(chainVec, renderer, slack);
+            float yaw = yawOf(chainVec);
             model = renderer.buildModel(chainVec, slack);
-            models.put(new BakeKey().set(chainVec, renderer, slack), model);
+            model.rotateY(yaw);
+            models.put(key, model);
         }
-        model.render(buffer, matrices, blockLight0, blockLight1, skyLight0, skyLight1, tintColor);
+        model.render(buffer, pose, tintColor, blockLight0, blockLight1, skyLight0, skyLight1);
     }
 
-    public void render(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack matrices, Vector3f chainVec, float slack, int blockLight0, int blockLight1, int skyLight0, int skyLight1, int tintColor) {
+    public void render(CatenaryRenderer renderer, VertexConsumer buffer, PoseStack.Pose pose, Vector3f chainVec, float slack, int blockLight0, int blockLight1, int skyLight0, int skyLight1, int tintColor) {
         if (!isFinite(chainVec)) return;
+        float yaw = yawOf(chainVec);
         ChainModel model = renderer.buildModel(chainVec, slack);
-        model.render(buffer, matrices, blockLight0, blockLight1, skyLight0, skyLight1, tintColor);
+        model.rotateY(yaw);
+        model.render(buffer, pose, tintColor, blockLight0, blockLight1, skyLight0, skyLight1);
+    }
+
+    private static float yawOf(Vector3f chainVec) {
+        return -(float) Math.atan2(chainVec.z(), chainVec.x());
     }
 
     private static boolean isFinite(Vector3f v) {
