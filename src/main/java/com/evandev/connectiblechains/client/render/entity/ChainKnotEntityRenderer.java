@@ -37,6 +37,9 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+
 //? if >=26.1 {
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.*;
@@ -74,9 +77,16 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
     private static final Identifier BANNER_CONNECTOR_TEXTURE =
             Identifier.fromNamespaceAndPath(CommonClass.MODID, "textures/block/banner_connector.png");
     private static final int BANNER_PATTERN_CACHE_SIZE = 256;
+//? if >=26.1 {
+    private static final RenderType BANNER_CONNECTOR_RENDER_TYPE = RenderTypes.entityCutout(BANNER_CONNECTOR_TEXTURE);
+//?} else {
+    /*private static final RenderType BANNER_CONNECTOR_RENDER_TYPE = RenderType.entityCutoutNoCull(BANNER_CONNECTOR_TEXTURE);
+    *///?}
 
     private final ChainRenderer chainRenderer = new ChainRenderer();
     private final HangingBlockRenderer hangingBlockRenderer = new HangingBlockRenderer();
+    private final Map<Item, RenderType> chainRenderTypes = new Reference2ObjectOpenHashMap<>();
+    private final Map<Item, RenderType> knotRenderTypes = new Reference2ObjectOpenHashMap<>();
     private final Map<CompoundTag, BannerPatternLayers> bannerPatternCache =
             new LinkedHashMap<>(BANNER_PATTERN_CACHE_SIZE, 0.75f, true) {
                 @Override
@@ -85,10 +95,9 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
                 }
             };
     private Level lastLevel;
+    private int tintEpoch;
 
 //? if >=26.1 {
-    private static final RenderType BANNER_CONNECTOR_RENDER_TYPE = RenderTypes.entityCutout(BANNER_CONNECTOR_TEXTURE);
-
     private final ChainKnotEntityModel model;
     private final BannerFlagModel bannerFlagModel;
     private final SpriteGetter sprites;
@@ -157,7 +166,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         state.attachedFace = entity.attachedFace;
         state.sourceItem = entity.getSourceItem();
         state.knotScaleXZ = entity.getKnotScale();
-        state.knotTintColor = computeKnotTintColor(entity.level(), entity.getSourceItem(), entity.blockPosition());
+        state.knotTintColor = knotTint(state, entity.level(), entity.getSourceItem(), entity.blockPosition());
 
         state.reset();
         Level level = entity.level();
@@ -190,7 +199,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
             renderChainData.chainedEntitySkyLight = LightCoordsUtil.sky(startPackedLight);
             renderChainData.chainHolderSkyLight = LightCoordsUtil.sky(endPackedLight);
             renderChainData.sourceItem = chainData.sourceItem;
-            renderChainData.tintColor = computeChainTintColor(level, chainData.sourceItem, srcPos, dstPos);
+            renderChainData.tintColor = chainTint(renderChainData, level, chainData.sourceItem, srcPos, dstPos);
             renderChainData.useBaked = chainHolder instanceof HangingEntity;
             renderChainData.slack = chainData.getSlack();
             renderChainData.buntings = chainData.buntings.isEmpty() ? List.of() : new ArrayList<>(chainData.buntings);
@@ -223,13 +232,13 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         poseStack.translate(0, 0.5, 0);
         poseStack.scale(state.knotScaleXZ, 1, state.knotScaleXZ);
 
-        RenderType knotType = RenderTypes.entityCutoutCull(getKnotTexture(state.sourceItem));
+        RenderType knotType = getKnotRenderType(state.sourceItem);
 
         collector.submitCustomGeometry(poseStack, knotType, (pose, vertexConsumer) -> {
-            PoseStack tempStack = new PoseStack();
-            tempStack.last().pose().set(pose.pose());
-            tempStack.last().normal().set(pose.normal());
-            this.model.renderToBuffer(tempStack, vertexConsumer, state.lightCoords, OverlayTexture.NO_OVERLAY, state.knotTintColor);
+            PoseStack scratch = state.scratch;
+            scratch.last().pose().set(pose.pose());
+            scratch.last().normal().set(pose.normal());
+            this.model.renderToBuffer(scratch, vertexConsumer, state.lightCoords, OverlayTexture.NO_OVERLAY, state.knotTintColor);
         });
         poseStack.popPose();
 
@@ -251,32 +260,28 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         Item sourceItem = chainData.sourceItem;
 
         CatenaryRenderer renderer = getCatenaryRenderer(sourceItem);
-        RenderType chainType = CommonClass.runtimeConfig.doDebugDraw() ? RenderTypes.lines()
-                : renderer.isShaded() ? RenderTypes.entityCutout(getChainTexture(sourceItem))
-                : RenderTypes.entityCutoutCull(getChainTexture(sourceItem));
+        boolean debugDraw = CommonClass.runtimeConfig.doDebugDraw();
+        RenderType chainType = debugDraw ? RenderTypes.lines() : getChainRenderType(sourceItem);
 
         Vector3f chainVec = new Vector3f((float) (endPos.x - startPos.x), (float) (endPos.y - startPos.y), (float) (endPos.z - startPos.z));
         float angleY = -(float) Math.atan2(chainVec.z(), chainVec.x());
 
         poseStack.pushPose();
         poseStack.translate(offset.x, offset.y, offset.z);
-        poseStack.mulPose(new Quaternionf().rotateXYZ(0, angleY, 0));
 
         collector.submitCustomGeometry(poseStack, chainType, (pose, vertexConsumer) -> {
-            PoseStack tempStack = new PoseStack();
-            tempStack.last().pose().set(pose.pose());
-            tempStack.last().normal().set(pose.normal());
-
             if (chainData.useBaked) {
-                chainRenderer.renderBaked(renderer, vertexConsumer, tempStack, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
+                chainRenderer.renderBaked(renderer, vertexConsumer, pose, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
             } else {
-                chainRenderer.render(renderer, vertexConsumer, tempStack, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
+                chainRenderer.render(renderer, vertexConsumer, pose, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
             }
 
-            if (CommonClass.runtimeConfig.doDebugDraw()) {
-                this.drawDebugVector(tempStack, startPos, endPos, vertexConsumer);
+            if (debugDraw) {
+                this.drawDebugVector(pose.pose(), startPos, endPos, vertexConsumer);
             }
         });
+
+        poseStack.mulPose(new Quaternionf().rotateXYZ(0, angleY, 0));
 
         if (!chainData.banners.isEmpty()) {
             renderBannersAlongChain(poseStack, collector, chainVec, chainData);
@@ -447,7 +452,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
             matrices.translate(0, 0.5, 0);
             matrices.scale(state.knotScaleXZ, 1, state.knotScaleXZ);
 
-            VertexConsumer vertexConsumer = vertexConsumers.getBuffer(RenderType.entityCutout(getKnotTexture(state.sourceItem)));
+            VertexConsumer vertexConsumer = vertexConsumers.getBuffer(getKnotRenderType(state.sourceItem));
             this.model.renderToBuffer(matrices, vertexConsumer, light, OverlayTexture.NO_OVERLAY, state.knotTintColor);
             matrices.popPose();
         }
@@ -455,9 +460,6 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         List<ChainKnotEntityRenderState.ChainData> chainDataSet = state.chainDataSet;
         for (ChainKnotEntityRenderState.ChainData chainData : chainDataSet) {
             renderChainLink(matrices, vertexConsumers, chainData);
-            if (CommonClass.runtimeConfig.doDebugDraw()) {
-                this.drawDebugVector(matrices, chainData.startPos, chainData.endPos, vertexConsumers.getBuffer(RenderType.lines()));
-            }
         }
 
         if (CommonClass.runtimeConfig.doDebugDraw()) {
@@ -503,7 +505,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
             renderChainData.chainedEntitySkyLight = LightTexture.sky(startPackedLight);
             renderChainData.chainHolderSkyLight = LightTexture.sky(endPackedLight);
             renderChainData.sourceItem = chainData.sourceItem;
-            renderChainData.tintColor = computeChainTintColor(level, chainData.sourceItem, srcPos, dstPos);
+            renderChainData.tintColor = chainTint(renderChainData, level, chainData.sourceItem, srcPos, dstPos);
             renderChainData.useBaked = chainHolder instanceof HangingEntity;
             renderChainData.slack = chainData.getSlack();
             renderChainData.buntings = chainData.buntings.isEmpty() ? List.of() : new ArrayList<>(chainData.buntings);
@@ -513,7 +515,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
 
         state.sourceItem = entity.getSourceItem();
         state.knotScaleXZ = entity.getKnotScale();
-        state.knotTintColor = computeKnotTintColor(level, entity.getSourceItem(), entity.blockPosition());
+        state.knotTintColor = knotTint(state, level, entity.getSourceItem(), entity.blockPosition());
     }
 
     private void renderChainLink(PoseStack matrices, MultiBufferSource vertexConsumerProvider, ChainKnotEntityRenderState.ChainData chainData) {
@@ -523,28 +525,30 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         Item sourceItem = chainData.sourceItem;
 
         CatenaryRenderer renderer = getCatenaryRenderer(sourceItem);
-        RenderType entityCutout = renderer.isShaded()
-                ? RenderType.entityCutoutNoCull(getChainTexture(sourceItem))
-                : RenderType.entityCutout(getChainTexture(sourceItem));
-        VertexConsumer vertexConsumer = vertexConsumerProvider.getBuffer(entityCutout);
-        if (CommonClass.runtimeConfig.doDebugDraw()) {
-            vertexConsumer = vertexConsumerProvider.getBuffer(RenderType.lines());
-        }
+        boolean debugDraw = CommonClass.runtimeConfig.doDebugDraw();
+        RenderType chainType = debugDraw ? RenderType.lines() : getChainRenderType(sourceItem);
+        VertexConsumer vertexConsumer = vertexConsumerProvider.getBuffer(chainType);
 
         if (!Chainable.isValidChainDistance(startPos, endPos)) return;
+
+        Vector3f chainVec = new Vector3f((float) (endPos.x - startPos.x), (float) (endPos.y - startPos.y), (float) (endPos.z - startPos.z));
+        float angleY = -(float) Math.atan2(chainVec.z(), chainVec.x());
 
         matrices.pushPose();
         matrices.translate(offset.x, offset.y, offset.z);
 
-        Vector3f chainVec = new Vector3f((float) (endPos.x - startPos.x), (float) (endPos.y - startPos.y), (float) (endPos.z - startPos.z));
-        float angleY = -(float) Math.atan2(chainVec.z(), chainVec.x());
-        matrices.mulPose(new Quaternionf().rotateXYZ(0, angleY, 0));
-
+        PoseStack.Pose pose = matrices.last();
         if (chainData.useBaked) {
-            chainRenderer.renderBaked(renderer, vertexConsumer, matrices, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
+            chainRenderer.renderBaked(renderer, vertexConsumer, pose, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
         } else {
-            chainRenderer.render(renderer, vertexConsumer, matrices, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
+            chainRenderer.render(renderer, vertexConsumer, pose, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
         }
+
+        if (debugDraw) {
+            drawDebugVector(pose.pose(), startPos, endPos, vertexConsumerProvider.getBuffer(RenderType.lines()));
+        }
+
+        matrices.mulPose(new Quaternionf().rotateXYZ(0, angleY, 0));
 
         if (!chainData.buntings.isEmpty()) {
             renderBuntingsAlongChain(matrices, vertexConsumerProvider, chainVec, chainData);
@@ -616,7 +620,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
             int light = lerpLight(chainData, t);
             BannerPatternLayers patterns = bannerPatterns(mc.level, entry.data());
 
-            renderBannerConnector(matrices.last(), buffers.getBuffer(RenderType.entityCutoutNoCull(BANNER_CONNECTOR_TEXTURE)), light, x, y);
+            renderBannerConnector(matrices.last(), buffers.getBuffer(BANNER_CONNECTOR_RENDER_TYPE), light, x, y);
 
             matrices.pushPose();
             matrices.translate(x, y, 0);
@@ -689,6 +693,9 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         bannerPatternCache.clear();
         hangingBlockRenderer.clear();
         chainRenderer.purge();
+        chainRenderTypes.clear();
+        knotRenderTypes.clear();
+        tintEpoch++;
     }
 
     private void discardStateOnLevelChange(Level level) {
@@ -697,6 +704,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
             chainRenderer.purge();
             hangingBlockRenderer.clear();
             bannerPatternCache.clear();
+            tintEpoch++;
         }
     }
 
@@ -723,14 +731,18 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         return parsed;
     }
 
-    private void drawDebugVector(PoseStack matrices, Vec3 startPos, Vec3 endPos, VertexConsumer buffer) {
+    private void drawDebugVector(Matrix4f matrix, Vec3 startPos, Vec3 endPos, VertexConsumer buffer) {
         if (startPos == null) return;
-        Matrix4f matrix = matrices.last().pose();
         Vec3 vec = endPos.subtract(startPos);
+        float yaw = -(float) Math.atan2(vec.z(), vec.x());
+        float cos = (float) Math.cos(yaw);
+        float sin = (float) Math.sin(yaw);
+        float x = (float) (vec.x * cos + vec.z * sin);
+        float z = (float) (-vec.x * sin + vec.z * cos);
         Vec3 normal = vec.normalize();
 
         addVertex(buffer, matrix, 0, 0, 0, 0, 255, 0, 255, normal);
-        addVertex(buffer, matrix, (float) vec.x, (float) vec.y, (float) vec.z, 255, 0, 0, 255, normal);
+        addVertex(buffer, matrix, x, (float) vec.y, z, 255, 0, 0, 255, normal);
     }
 
     private void addVertex(VertexConsumer buffer, Matrix4f matrix, float x, float y, float z, int r, int g, int b, int a, Vec3 normal) {
@@ -762,10 +774,77 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         return getTextureManager().getCatenaryRenderer(item);
     }
 
-    private int computeChainTintColor(Level level, Item sourceItem, Vec3 srcPos, Vec3 dstPos) {
+    private int computeChainTintColor(Level level, Item sourceItem, BlockPos pos) {
         return getTextureManager().getTint(sourceItem)
-                .map(tint -> 0xFF000000 | sampleBiomeColor(level, tint, BlockPos.containing(srcPos.lerp(dstPos, 0.5))))
+                .map(tint -> 0xFF000000 | sampleBiomeColor(level, tint, pos))
                 .orElse(0xFFFFFFFF);
+    }
+
+    private int chainTint(ChainKnotEntityRenderState.ChainData chain, Level level, Item item, Vec3 srcPos, Vec3 dstPos) {
+        double x = (srcPos.x + dstPos.x) * 0.5;
+        double y = (srcPos.y + dstPos.y) * 0.5;
+        double z = (srcPos.z + dstPos.z) * 0.5;
+        long key = BlockPos.asLong(Mth.floor(x), Mth.floor(y), Mth.floor(z));
+        long stamp = tintStamp(level);
+
+        if (chain.tintStamp == stamp && chain.tintItem == item && chain.tintPos == key) {
+            return chain.tintColor;
+        }
+
+        int color = computeChainTintColor(level, item, BlockPos.containing(x, y, z));
+        chain.tintStamp = stamp;
+        chain.tintItem = item;
+        chain.tintPos = key;
+        chain.tintColor = color;
+        return color;
+    }
+
+    private int knotTint(ChainKnotEntityRenderState state, Level level, Item item, BlockPos pos) {
+        long key = pos.asLong();
+        long stamp = tintStamp(level);
+        if (state.knotTintStamp == stamp && state.knotTintItem == item && state.knotTintPos == key) {
+            return state.knotTintColor;
+        }
+
+        int color = computeKnotTintColor(level, item, pos);
+        state.knotTintStamp = stamp;
+        state.knotTintItem = item;
+        state.knotTintPos = key;
+        state.knotTintColor = color;
+        return color;
+    }
+
+    private long tintStamp(Level level) {
+        // Biomes can change at runtime, so let cached tints go stale eventually.
+        return ((long) tintEpoch << 40) | (level.getGameTime() / 200L);
+    }
+
+    private RenderType getChainRenderType(Item item) {
+        RenderType cached = chainRenderTypes.get(item);
+        if (cached != null) return cached;
+
+        // Chain quads are single sided now, so they must not be backface culled.
+        //? if >=26.1 {
+        cached = RenderTypes.entityCutout(getChainTexture(item));
+        //?} else {
+        /*cached = RenderType.entityCutoutNoCull(getChainTexture(item));
+        *///?}
+        chainRenderTypes.put(item, cached);
+        return cached;
+    }
+
+    private RenderType getKnotRenderType(Item item) {
+        RenderType cached = knotRenderTypes.get(item);
+        if (cached != null) return cached;
+
+        // The knot model is built from closed boxes, so culling is free here.
+        //? if >=26.1 {
+        cached = RenderTypes.entityCutoutCull(getKnotTexture(item));
+        //?} else {
+        /*cached = RenderType.entityCutout(getKnotTexture(item));
+        *///?}
+        knotRenderTypes.put(item, cached);
+        return cached;
     }
 
     private int computeKnotTintColor(Level level, Item sourceItem, BlockPos pos) {

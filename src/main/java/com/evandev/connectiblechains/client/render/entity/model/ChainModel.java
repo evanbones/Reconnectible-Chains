@@ -3,6 +3,7 @@ package com.evandev.connectiblechains.client.render.entity.model;
 import com.evandev.connectiblechains.CommonClass;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
 //? if >=26.1 {
 import net.minecraft.util.LightCoordsUtil;
@@ -15,80 +16,166 @@ import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions, float[] normals, boolean shaded) {
+public final class ChainModel {
 
-    // Matches the 25 vertex pairs vanilla interpolates a leash over.
     private static final int LIGHT_STEPS = 25;
+
+    private final float[] vertices;
+    private final float[] uvs;
+    private final float[] normals;
+    private final byte[] lightSteps;
+    private final boolean shaded;
+
+    private ChainModel(float[] vertices, float[] uvs, float[] normals, byte[] lightSteps, boolean shaded) {
+        this.vertices = vertices;
+        this.uvs = uvs;
+        this.normals = normals;
+        this.lightSteps = lightSteps;
+        this.shaded = shaded;
+    }
 
     public static Builder builder(int initialCapacity, boolean shaded) {
         return new Builder(initialCapacity, shaded);
     }
 
-    private static int[] packLightRamp(int bLight0, int bLight1, int sLight0, int sLight1) {
+    private static int packLight(int blockLight, int skyLight) {
+//? if >=26.1 {
+        return LightCoordsUtil.pack(blockLight, skyLight);
+//?} else {
+        /*return LightTexture.pack(blockLight, skyLight);
+*///?}
+    }
+
+    private static int[] buildLightRamp(int blockLight0, int blockLight1, int skyLight0, int skyLight1) {
         int[] ramp = new int[LIGHT_STEPS];
         for (int i = 0; i < LIGHT_STEPS; i++) {
             float f = (float) i / (LIGHT_STEPS - 1);
-//? if >=26.1 {
-            ramp[i] = LightCoordsUtil.pack(
-//?} else {
-            /*ramp[i] = LightTexture.pack(
-*///?}
-                    (int) Mth.lerp(f, (float) bLight0, (float) bLight1),
-                    (int) Mth.lerp(f, (float) sLight0, (float) sLight1));
+            ramp[i] = packLight(
+                    (int) Mth.lerp(f, (float) blockLight0, (float) blockLight1),
+                    (int) Mth.lerp(f, (float) skyLight0, (float) skyLight1));
         }
         return ramp;
     }
 
-    public void render(VertexConsumer buffer, PoseStack matrices, int bLight0, int bLight1, int sLight0, int sLight1, int tintColor) {
-        Matrix4f m = matrices.last().pose();
-        Matrix3f normalMatrix = matrices.last().normal();
+    /**
+     * Rotates the baked geometry around Y so the mesh already points along the world space chain
+     * vector. Callers then only have to translate.
+     */
+    public void rotateY(float angle) {
+        float cos = (float) Math.cos(angle);
+        float sin = (float) Math.sin(angle);
+        for (int i = 0; i < vertices.length; i += 3) {
+            float x = vertices[i];
+            float z = vertices[i + 2];
+            vertices[i] = x * cos + z * sin;
+            vertices[i + 2] = -x * sin + z * cos;
+
+            float nx = normals[i];
+            float nz = normals[i + 2];
+            normals[i] = nx * cos + nz * sin;
+            normals[i + 2] = -nx * sin + nz * cos;
+        }
+    }
+
+    public void render(VertexConsumer buffer, PoseStack.Pose pose, int tintColor, int blockLight0, int blockLight1, int skyLight0, int skyLight1) {
+        Matrix4f matrix = pose.pose();
+        Matrix3f normalMatrix = pose.normal();
         float r = ((tintColor >> 16) & 0xFF) / 255.0f;
         float g = ((tintColor >> 8) & 0xFF) / 255.0f;
         float b = (tintColor & 0xFF) / 255.0f;
         float a = ((tintColor >> 24) & 0xFF) / 255.0f;
+        boolean debugLines = CommonClass.runtimeConfig.doDebugDraw();
 
-        int[] lightRamp = packLightRamp(bLight0, bLight1, sLight0, sLight1);
+        boolean uniformLight = blockLight0 == blockLight1 && skyLight0 == skyLight1;
+        int uniformLightValue = uniformLight ? packLight(blockLight0, skyLight0) : 0;
+        int[] lightRamp = uniformLight ? null : buildLightRamp(blockLight0, blockLight1, skyLight0, skyLight1);
 
         int count = vertices.length / 3;
-        Vector3f norm = new Vector3f();
+        if (isTranslationOnly(matrix)) {
+            float tx = matrix.m30();
+            float ty = matrix.m31();
+            float tz = matrix.m32();
+            for (int i = 0; i < count; i++) {
+                int v = i * 3;
+                int light = uniformLight ? uniformLightValue : lightRamp[lightSteps[i] & 0xFF];
+
+                buffer
+                        .addVertex(vertices[v] + tx, vertices[v + 1] + ty, vertices[v + 2] + tz)
+                        .setColor(r, g, b, a)
+                        .setUv(uvs[i * 2], uvs[i * 2 + 1])
+                        .setOverlay(OverlayTexture.NO_OVERLAY)
+                        .setLight(light)
+                        .setNormal(normals[v], normals[v + 1], normals[v + 2]);
+
+                //? if >=26.1 {
+                if (debugLines) {
+                    buffer.setLineWidth(1.0f);
+                }
+                //?}
+            }
+            return;
+        }
 
         for (int i = 0; i < count; i++) {
-            float x = vertices[i * 3];
-            float y = vertices[i * 3 + 1];
-            float z = vertices[i * 3 + 2];
+            int v = i * 3;
+            float x = vertices[v];
+            float y = vertices[v + 1];
+            float z = vertices[v + 2];
 
-            float tx = Math.fma(m.m00(), x, Math.fma(m.m10(), y, Math.fma(m.m20(), z, m.m30())));
-            float ty = Math.fma(m.m01(), x, Math.fma(m.m11(), y, Math.fma(m.m21(), z, m.m31())));
-            float tz = Math.fma(m.m02(), x, Math.fma(m.m12(), y, Math.fma(m.m22(), z, m.m32())));
+            float px = Math.fma(matrix.m00(), x, Math.fma(matrix.m10(), y, Math.fma(matrix.m20(), z, matrix.m30())));
+            float py = Math.fma(matrix.m01(), x, Math.fma(matrix.m11(), y, Math.fma(matrix.m21(), z, matrix.m31())));
+            float pz = Math.fma(matrix.m02(), x, Math.fma(matrix.m12(), y, Math.fma(matrix.m22(), z, matrix.m32())));
 
-            norm.set(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
+            float nx = normals[v];
+            float ny = normals[v + 1];
+            float nz = normals[v + 2];
             if (shaded) {
-                normalMatrix.transform(norm);
+                float tnx = normalMatrix.m00() * nx + normalMatrix.m01() * ny + normalMatrix.m02() * nz;
+                float tny = normalMatrix.m10() * nx + normalMatrix.m11() * ny + normalMatrix.m12() * nz;
+                float tnz = normalMatrix.m20() * nx + normalMatrix.m21() * ny + normalMatrix.m22() * nz;
+                nx = tnx;
+                ny = tny;
+                nz = tnz;
             }
 
-            int step = Mth.clamp((int) (lightFractions[i] * (LIGHT_STEPS - 1) + 0.5f), 0, LIGHT_STEPS - 1);
+            int light = uniformLight ? uniformLightValue : lightRamp[lightSteps[i] & 0xFF];
 
             buffer
-                    .addVertex(tx, ty, tz)
+                    .addVertex(px, py, pz)
                     .setColor(r, g, b, a)
                     .setUv(uvs[i * 2], uvs[i * 2 + 1])
                     .setOverlay(OverlayTexture.NO_OVERLAY)
-                    .setLight(lightRamp[step])
-                    .setNormal(norm.x(), norm.y(), norm.z());
+                    .setLight(light)
+                    .setNormal(nx, ny, nz);
 
             //? if >=26.1 {
-            if (CommonClass.runtimeConfig.doDebugDraw()) {
+            if (debugLines) {
                 buffer.setLineWidth(1.0f);
             }
             //?}
         }
     }
 
-    public static class Builder {
+    private static boolean isTranslationOnly(Matrix4f m) {
+        return near(m.m00(), 1.0f) && near(m.m01(), 0.0f) && near(m.m02(), 0.0f) && near(m.m03(), 0.0f)
+                && near(m.m10(), 0.0f) && near(m.m11(), 1.0f) && near(m.m12(), 0.0f) && near(m.m13(), 0.0f)
+                && near(m.m20(), 0.0f) && near(m.m21(), 0.0f) && near(m.m22(), 1.0f) && near(m.m23(), 0.0f)
+                && near(m.m33(), 1.0f);
+    }
+
+    private static boolean near(float value, float expected) {
+        return Math.abs(value - expected) < 1.0E-5f;
+    }
+
+    private static int lightStep(float fraction) {
+        return Mth.clamp((int) (fraction * (LIGHT_STEPS - 1) + 0.5f), 0, LIGHT_STEPS - 1);
+    }
+
+    public static final class Builder {
         private final FloatArrayList vertices;
         private final FloatArrayList uvs;
-        private final FloatArrayList lightFractions;
         private final FloatArrayList normals;
+        private final ByteArrayList lightSteps;
         private final boolean shaded;
         private int size;
         private float currentFraction = 0f;
@@ -98,8 +185,8 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions, 
             int safeCapacity = Math.min(Math.max(initialCapacity, 16), 65536);
             vertices = new FloatArrayList(safeCapacity * 3);
             uvs = new FloatArrayList(safeCapacity * 2);
-            lightFractions = new FloatArrayList(safeCapacity);
             normals = new FloatArrayList(safeCapacity * 3);
+            lightSteps = new ByteArrayList(safeCapacity);
         }
 
         public Builder fraction(float f) {
@@ -118,7 +205,7 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions, 
             vertices.add(v.x());
             vertices.add(v.y());
             vertices.add(v.z());
-            lightFractions.add(currentFraction);
+            lightSteps.add((byte) lightStep(currentFraction));
             return this;
         }
 
@@ -135,9 +222,14 @@ public record ChainModel(float[] vertices, float[] uvs, float[] lightFractions, 
         public ChainModel build() {
             if (vertices.size() != size * 3) CommonClass.LOGGER.error("Wrong count of vertices");
             if (uvs.size() != size * 2) CommonClass.LOGGER.error("Wrong count of uvs");
-            if (lightFractions.size() != size) CommonClass.LOGGER.error("Wrong count of light fractions");
+            if (lightSteps.size() != size) CommonClass.LOGGER.error("Wrong count of light steps");
 
-            return new ChainModel(vertices.toFloatArray(), uvs.toFloatArray(), lightFractions.toFloatArray(), normals.toFloatArray(), shaded);
+            return new ChainModel(
+                    vertices.toFloatArray(),
+                    uvs.toFloatArray(),
+                    normals.toFloatArray(),
+                    lightSteps.toByteArray(),
+                    shaded);
         }
     }
 }
