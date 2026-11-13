@@ -12,7 +12,9 @@ import com.evandev.connectiblechains.util.HangingBlockRenderer;
 import com.evandev.connectiblechains.util.MathHelper;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.BiomeColors;
 import net.minecraft.client.renderer.blockentity.BannerRenderer;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -33,12 +35,11 @@ import net.minecraft.world.level.block.entity.BannerPatternLayers;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
-
-import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 
 //? if >=26.1 {
 import net.minecraft.client.model.geom.PartPose;
@@ -67,7 +68,9 @@ import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Items;
 *///?}
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 //? if >=26.1 {
 public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, ChainKnotEntityRenderState> {
@@ -77,6 +80,8 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
     private static final Identifier BANNER_CONNECTOR_TEXTURE =
             Identifier.fromNamespaceAndPath(CommonClass.MODID, "textures/block/banner_connector.png");
     private static final int BANNER_PATTERN_CACHE_SIZE = 256;
+    private static final int NO_TINT = 0xFFFFFFFF;
+    private static final int DEFAULT_BIOME_COLOR = 0xCCCCCC;
 //? if >=26.1 {
     private static final RenderType BANNER_CONNECTOR_RENDER_TYPE = RenderTypes.entityCutout(BANNER_CONNECTOR_TEXTURE);
 //?} else {
@@ -95,7 +100,6 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
                 }
             };
     private Level lastLevel;
-    private int tintEpoch;
 
 //? if >=26.1 {
     private final ChainKnotEntityModel model;
@@ -106,15 +110,17 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         super(context);
         this.model = new ChainKnotEntityModel(context.bakeLayer(ClientInitializer.CHAIN_KNOT));
         this.sprites = context.getSprites();
-
-        MeshDefinition mesh = new MeshDefinition();
-        PartDefinition root = mesh.getRoot();
-        root.addOrReplaceChild("flag", CubeListBuilder.create().texOffs(0, 0)
-                        .addBox(-10.0F, 0.0F, -2.0F, 20.0F, 40.0F, 1.0F, CubeDeformation.NONE),
-                PartPose.ZERO);
-        this.bannerFlagModel = new BannerFlagModel(LayerDefinition.create(mesh, 64, 64).bakeRoot());
+        this.bannerFlagModel = createBannerFlagModel();
 
         ClientInitializer.getInstance().setChainKnotEntityRenderer(this);
+    }
+
+    private static BannerFlagModel createBannerFlagModel() {
+        MeshDefinition mesh = new MeshDefinition();
+        mesh.getRoot().addOrReplaceChild("flag", CubeListBuilder.create().texOffs(0, 0)
+                        .addBox(-10.0F, 0.0F, -2.0F, 20.0F, 40.0F, 1.0F, CubeDeformation.NONE),
+                PartPose.ZERO);
+        return new BannerFlagModel(LayerDefinition.create(mesh, 64, 64).bakeRoot());
     }
 
     @Override
@@ -132,17 +138,12 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         AABB result = super.getBoundingBoxForCulling(entity, partialTick);
 *///?}
         Chainable.ChainData[] chains = entity.getChainDataArray();
-        if (chains.length == 0) {
-            return result;
-        }
+        if (chains.length == 0) return result;
 
         for (Chainable.ChainData chainData : chains) {
             Entity chainHolder = chainData.getResolvedHolder();
-            if (chainHolder == null) {
-                chainHolder = entity.getChainHolder(chainData);
-            }
+            if (chainHolder == null) chainHolder = entity.getChainHolder(chainData);
             if (chainHolder == null) continue;
-
             if (!Chainable.isValidChainDistance(entity.position(), chainHolder.position())) continue;
 
             result = result.minmax(chainHolder.getBoundingBox());
@@ -160,52 +161,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
     @Override
     public void extractRenderState(ChainKnotEntity entity, ChainKnotEntityRenderState state, float tickDelta) {
         super.extractRenderState(entity, state, tickDelta);
-
-        discardStateOnLevelChange(entity.level());
-
-        state.attachedFace = entity.attachedFace;
-        state.sourceItem = entity.getSourceItem();
-        state.knotScaleXZ = entity.getKnotScale();
-        state.knotTintColor = knotTint(state, entity.level(), entity.getSourceItem(), entity.blockPosition());
-
-        state.reset();
-        Level level = entity.level();
-        Vec3 entityPos = entity.getPosition(tickDelta);
-
-        Chainable.ChainData[] links = entity.getChainDataArray();
-
-        for (Chainable.ChainData chainData : links) {
-            Entity chainHolder = entity.getChainHolder(chainData);
-            if (chainHolder == null) continue;
-
-            Vec3 srcPos = entity.getChainPos(tickDelta);
-            Vec3 dstPos = (chainHolder instanceof ChainKnotEntity chainKnotEntity)
-                    ? chainKnotEntity.getChainPos(tickDelta)
-                    : chainHolder.getRopeHoldPosition(tickDelta);
-
-            if (!Chainable.isValidChainDistance(srcPos, dstPos)) {
-                continue;
-            }
-
-            int startPackedLight = this.getPackedLightCoords(entity, tickDelta);
-            int endPackedLight = this.entityRenderDispatcher.getPackedLightCoords(chainHolder, tickDelta);
-
-            ChainKnotEntityRenderState.ChainData renderChainData = state.claim();
-            renderChainData.offset = srcPos.subtract(entityPos);
-            renderChainData.startPos = srcPos;
-            renderChainData.endPos = dstPos;
-            renderChainData.chainedEntityBlockLight = LightCoordsUtil.block(startPackedLight);
-            renderChainData.chainHolderBlockLight = LightCoordsUtil.block(endPackedLight);
-            renderChainData.chainedEntitySkyLight = LightCoordsUtil.sky(startPackedLight);
-            renderChainData.chainHolderSkyLight = LightCoordsUtil.sky(endPackedLight);
-            renderChainData.sourceItem = chainData.sourceItem;
-            renderChainData.tintColor = chainTint(renderChainData, level, chainData.sourceItem, srcPos, dstPos);
-            renderChainData.useBaked = chainHolder instanceof HangingEntity;
-            renderChainData.slack = chainData.getSlack();
-            renderChainData.buntings = chainData.buntings.isEmpty() ? List.of() : new ArrayList<>(chainData.buntings);
-            renderChainData.banners = chainData.banners.isEmpty() ? List.of() : new ArrayList<>(chainData.banners);
-            renderChainData.hangings = chainData.hangings.isEmpty() ? List.of() : new ArrayList<>(chainData.hangings);
-        }
+        fillRenderState(entity, state, tickDelta);
 
         if (CommonClass.runtimeConfig.doDebugDraw()) {
             state.nameTag = Component.literal("C: " + state.chainDataSet.size());
@@ -215,35 +171,16 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
     @Override
     public void submit(ChainKnotEntityRenderState state, PoseStack poseStack, @NotNull SubmitNodeCollector collector, @NotNull CameraRenderState cameraState) {
         poseStack.pushPose();
-
-        Direction face = state.attachedFace;
-        if (face != null) {
-            switch (face) {
-                case DOWN -> poseStack.mulPose(new Quaternionf().rotateX((float) Math.PI));
-                case NORTH -> poseStack.mulPose(new Quaternionf().rotateX((float) -Math.PI / 2f));
-                case SOUTH -> poseStack.mulPose(new Quaternionf().rotateX((float) Math.PI / 2f));
-                case WEST -> poseStack.mulPose(new Quaternionf().rotateZ((float) Math.PI / 2f));
-                case EAST -> poseStack.mulPose(new Quaternionf().rotateZ((float) -Math.PI / 2f));
-                case UP -> {
-                }
-            }
-        }
-
-        poseStack.translate(0, 0.5, 0);
-        poseStack.scale(state.knotScaleXZ, 1, state.knotScaleXZ);
-
-        RenderType knotType = getKnotRenderType(state.sourceItem);
-
-        collector.submitCustomGeometry(poseStack, knotType, (pose, vertexConsumer) -> {
-            PoseStack scratch = state.scratch;
-            scratch.last().pose().set(pose.pose());
-            scratch.last().normal().set(pose.normal());
-            this.model.renderToBuffer(scratch, vertexConsumer, state.lightCoords, OverlayTexture.NO_OVERLAY, state.knotTintColor);
+        transformToKnot(poseStack, state);
+        collector.submitCustomGeometry(poseStack, getKnotRenderType(state.sourceItem), (pose, vertexConsumer) -> {
+            PoseStack tempStack = new PoseStack();
+            tempStack.last().pose().set(pose.pose());
+            tempStack.last().normal().set(pose.normal());
+            this.model.renderToBuffer(tempStack, vertexConsumer, state.lightCoords, OverlayTexture.NO_OVERLAY, state.knotTintColor);
         });
         poseStack.popPose();
 
-        List<ChainKnotEntityRenderState.ChainData> chainDataSet = state.chainDataSet;
-        for (ChainKnotEntityRenderState.ChainData chainData : chainDataSet) {
+        for (ChainKnotEntityRenderState.ChainData chainData : state.chainDataSet) {
             renderChainLink(poseStack, collector, chainData);
         }
 
@@ -251,78 +188,43 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
     }
 
     private void renderChainLink(PoseStack poseStack, SubmitNodeCollector collector, ChainKnotEntityRenderState.ChainData chainData) {
-        Vec3 offset = chainData.offset;
-        Vec3 startPos = chainData.startPos;
-        Vec3 endPos = chainData.endPos;
-
-        if (!Chainable.isValidChainDistance(startPos, endPos)) return;
-
-        Item sourceItem = chainData.sourceItem;
-
-        CatenaryRenderer renderer = getCatenaryRenderer(sourceItem);
         boolean debugDraw = CommonClass.runtimeConfig.doDebugDraw();
-        RenderType chainType = debugDraw ? RenderTypes.lines() : getChainRenderType(sourceItem);
-
-        Vector3f chainVec = new Vector3f((float) (endPos.x - startPos.x), (float) (endPos.y - startPos.y), (float) (endPos.z - startPos.z));
-        float angleY = -(float) Math.atan2(chainVec.z(), chainVec.x());
+        RenderType chainType = debugDraw ? RenderTypes.lines() : getChainRenderType(chainData.sourceItem);
+        Vector3f chainVec = chainData.endPos.subtract(chainData.startPos).toVector3f();
 
         poseStack.pushPose();
-        poseStack.translate(offset.x, offset.y, offset.z);
+        poseStack.translate(chainData.offset.x, chainData.offset.y, chainData.offset.z);
 
         collector.submitCustomGeometry(poseStack, chainType, (pose, vertexConsumer) -> {
-            if (chainData.useBaked) {
-                chainRenderer.renderBaked(renderer, vertexConsumer, pose, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
-            } else {
-                chainRenderer.render(renderer, vertexConsumer, pose, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
-            }
-
+            renderChain(vertexConsumer, pose, chainVec, chainData);
             if (debugDraw) {
-                this.drawDebugVector(pose.pose(), startPos, endPos, vertexConsumer);
+                drawDebugVector(pose.pose(), chainData.startPos, chainData.endPos, vertexConsumer);
             }
         });
 
-        poseStack.mulPose(new Quaternionf().rotateXYZ(0, angleY, 0));
-
-        if (!chainData.banners.isEmpty()) {
-            renderBannersAlongChain(poseStack, collector, chainVec, chainData);
-        }
-
-        if (!chainData.hangings.isEmpty()) {
-            renderHangingsAlongChain(poseStack, collector, chainVec, chainData);
-        }
-
+        poseStack.mulPose(new Quaternionf().rotationY(yawOf(chainVec)));
+        renderBannersAlongChain(poseStack, collector, chainVec, chainData);
+        renderHangingsAlongChain(poseStack, collector, chainVec, chainData);
         poseStack.popPose();
     }
 
     private void renderBannersAlongChain(PoseStack poseStack, SubmitNodeCollector collector, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
-        float distanceXZ = (float) Math.sqrt(chainVec.x() * chainVec.x() + chainVec.z() * chainVec.z());
-        if (distanceXZ < 0.1f) return;
-
-        float distance = chainVec.length();
-        float wrongDistanceFactor = distance / distanceXZ;
-
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
-
-        MathHelper.Catenary catenary = MathHelper.Catenary.of(distance, chainVec.y(), chainData.slack);
+        if (chainData.banners.isEmpty()) return;
+        ChainCurve curve = ChainCurve.of(chainVec, chainData.slack);
+        Level level = Minecraft.getInstance().level;
+        if (curve == null || level == null) return;
 
         for (Chainable.ChainData.BannerEntry entry : chainData.banners) {
-            float t = entry.t();
-            float x = t * distanceXZ;
-            float y = (float) catenary.y(x * wrongDistanceFactor);
+            float x = curve.x(entry.t());
+            float y = curve.y(x);
+            int light = lerpLight(chainData, entry.t());
+            BannerPatternLayers patterns = bannerPatterns(level, entry.data());
 
-            int light = lerpLight(chainData, t);
-            BannerPatternLayers patterns = bannerPatterns(mc.level, entry.data());
-
-            final float fx = x, fy = y;
             collector.submitCustomGeometry(poseStack, BANNER_CONNECTOR_RENDER_TYPE, (pose, vertexConsumer) ->
-                    renderBannerConnector(pose, vertexConsumer, light, fx, fy));
+                    renderBannerConnector(pose, vertexConsumer, light, x, y));
 
             poseStack.pushPose();
-            poseStack.translate(x, y, 0);
-            poseStack.mulPose(new Quaternionf().rotateX((float) Math.PI));
-            poseStack.scale(0.66f, 0.66f, 0.66f);
-            poseStack.translate(0, 0.375, 0.07);
+            transformToBanner(poseStack, x, y);
 //? if <=26.2 {
             collector.submitModel(bannerFlagModel, 0.0F, poseStack, light, OverlayTexture.NO_OVERLAY, -1,
                     Sheets.BANNER_BASE, sprites, 0, null);
@@ -337,34 +239,6 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
             poseStack.popPose();
         }
     }
-
-    private void renderHangingsAlongChain(PoseStack poseStack, SubmitNodeCollector collector, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
-        float distanceXZ = (float) Math.sqrt(chainVec.x() * chainVec.x() + chainVec.z() * chainVec.z());
-        if (distanceXZ < 0.1f) return;
-
-        float distance = chainVec.length();
-        float wrongDistanceFactor = distance / distanceXZ;
-
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
-
-        MathHelper.Catenary curve = MathHelper.Catenary.of(distance, chainVec.y(), chainData.slack);
-
-        for (Chainable.ChainData.HangingEntry entry : chainData.hangings) {
-            float t = entry.t();
-            float x = t * distanceXZ;
-            float y = (float) curve.y(x * wrongDistanceFactor);
-
-            double worldX = Mth.lerp(t, chainData.startPos.x(), chainData.endPos.x());
-            double worldY = chainData.startPos.y() + y;
-            double worldZ = Mth.lerp(t, chainData.startPos.z(), chainData.endPos.z());
-            BlockPos pos = BlockPos.containing(worldX, worldY - 1.0, worldZ);
-
-            hangingBlockRenderer.render(mc, entry.blockId(), pos, poseStack, collector, x, y);
-        }
-    }
-
-    private void renderBannerConnector(PoseStack.Pose pose, VertexConsumer vc, int light, float x, float y) {
 //?} else {
     /*private static final Item[] BUNTING_ITEMS = new Item[DyeColor.values().length];
 
@@ -398,20 +272,12 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
     @Override
     public boolean shouldRender(ChainKnotEntity entity, Frustum camera, double camX, double camY, double camZ) {
         double distanceSqr = SableHelper.distanceToCameraSqr(entity, this.entityRenderDispatcher);
-        if (!entity.shouldRenderAtSqrDistance(distanceSqr)) {
-            return false;
-        }
-
-        if (entity.noCulling) {
-            return true;
-        }
+        if (!entity.shouldRenderAtSqrDistance(distanceSqr)) return false;
+        if (entity.noCulling) return true;
 
         AABB aabb = entity.getBoundingBoxForCulling().inflate(0.5);
         if (aabb.hasNaN() || aabb.getSize() == 0.0) {
-            aabb = new AABB(
-                    entity.getX() - 2.0, entity.getY() - 2.0, entity.getZ() - 2.0,
-                    entity.getX() + 2.0, entity.getY() + 2.0, entity.getZ() + 2.0
-            );
+            aabb = AABB.ofSize(entity.position(), 4.0, 4.0, 4.0);
         }
 
         SubLevelAccess subLevel = SableHelper.getSubLevel(entity.level(), entity, null);
@@ -423,266 +289,237 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
     }
 
     @Override
-    public void render(@NotNull ChainKnotEntity entity, float yaw, float tickDelta, @NotNull PoseStack matrices, @NotNull MultiBufferSource vertexConsumers, int light) {
-        discardStateOnLevelChange(entity.level());
-
+    public void render(@NotNull ChainKnotEntity entity, float yaw, float tickDelta, @NotNull PoseStack matrices, @NotNull MultiBufferSource buffers, int light) {
         ChainKnotEntityRenderState state = reusableState;
-        updateRenderState(entity, state, tickDelta);
-        render(entity, state, matrices, vertexConsumers, light, tickDelta);
-        super.render(entity, yaw, tickDelta, matrices, vertexConsumers, light);
-    }
+        fillRenderState(entity, state, tickDelta);
 
-    public void render(ChainKnotEntity entity, ChainKnotEntityRenderState state, PoseStack matrices, MultiBufferSource vertexConsumers, int light, float tickDelta) {
-        double distanceToCameraSqr = SableHelper.distanceToCameraSqr(entity, this.entityRenderDispatcher);
-
-        if (distanceToCameraSqr <= 4096.0D) {
+        if (SableHelper.distanceToCameraSqr(entity, this.entityRenderDispatcher) <= 4096.0D) {
             matrices.pushPose();
-            Direction face = entity.attachedFace;
-
-            switch (face) {
-                case DOWN -> matrices.mulPose(new Quaternionf().rotateX((float) Math.PI));
-                case NORTH -> matrices.mulPose(new Quaternionf().rotateX((float) -Math.PI / 2f));
-                case SOUTH -> matrices.mulPose(new Quaternionf().rotateX((float) Math.PI / 2f));
-                case WEST -> matrices.mulPose(new Quaternionf().rotateZ((float) Math.PI / 2f));
-                case EAST -> matrices.mulPose(new Quaternionf().rotateZ((float) -Math.PI / 2f));
-                case UP -> {
-                }
-            }
-
-            matrices.translate(0, 0.5, 0);
-            matrices.scale(state.knotScaleXZ, 1, state.knotScaleXZ);
-
-            VertexConsumer vertexConsumer = vertexConsumers.getBuffer(getKnotRenderType(state.sourceItem));
+            transformToKnot(matrices, state);
+            VertexConsumer vertexConsumer = buffers.getBuffer(getKnotRenderType(state.sourceItem));
             this.model.renderToBuffer(matrices, vertexConsumer, light, OverlayTexture.NO_OVERLAY, state.knotTintColor);
             matrices.popPose();
         }
 
-        List<ChainKnotEntityRenderState.ChainData> chainDataSet = state.chainDataSet;
-        for (ChainKnotEntityRenderState.ChainData chainData : chainDataSet) {
-            renderChainLink(matrices, vertexConsumers, chainData);
+        for (ChainKnotEntityRenderState.ChainData chainData : state.chainDataSet) {
+            renderChainLink(matrices, buffers, chainData);
         }
 
         if (CommonClass.runtimeConfig.doDebugDraw()) {
             matrices.pushPose();
-            Component holdingCount = Component.literal("C: " + chainDataSet.size());
-            this.renderNameTag(entity, holdingCount, matrices, vertexConsumers, light, tickDelta);
+            this.renderNameTag(entity, Component.literal("C: " + state.chainDataSet.size()), matrices, buffers, light, tickDelta);
             matrices.popPose();
         }
+
+        super.render(entity, yaw, tickDelta, matrices, buffers, light);
     }
 
-    public void updateRenderState(ChainKnotEntity entity, ChainKnotEntityRenderState state, float tickDelta) {
-        state.reset();
-        Level level = entity.level();
-        Vec3 entityPos = entity.getPosition(tickDelta);
-
-        Chainable.ChainData[] links = entity.getChainDataArray();
-
-        for (Chainable.ChainData chainData : links) {
-            Entity chainHolder = entity.getChainHolder(chainData);
-            if (chainHolder == null) continue;
-
-            Vec3 srcPos = entity.getChainPos(tickDelta);
-            Vec3 dstPos;
-            if (chainHolder instanceof ChainKnotEntity chainKnotEntity) {
-                dstPos = chainKnotEntity.getChainPos(tickDelta);
-            } else {
-                dstPos = chainHolder.getRopeHoldPosition(tickDelta);
-            }
-            dstPos = SableHelper.transformHolderPosForRenderer(level, entity, chainHolder, dstPos, tickDelta);
-            if (!Chainable.isValidChainDistance(srcPos, dstPos)) {
-                continue;
-            }
-
-            int startPackedLight = this.getPackedLightCoords(entity, tickDelta);
-            int endPackedLight = this.entityRenderDispatcher.getPackedLightCoords(chainHolder, tickDelta);
-
-            ChainKnotEntityRenderState.ChainData renderChainData = state.claim();
-            renderChainData.offset = srcPos.subtract(entityPos);
-            renderChainData.startPos = srcPos;
-            renderChainData.endPos = dstPos;
-            renderChainData.chainedEntityBlockLight = LightTexture.block(startPackedLight);
-            renderChainData.chainHolderBlockLight = LightTexture.block(endPackedLight);
-            renderChainData.chainedEntitySkyLight = LightTexture.sky(startPackedLight);
-            renderChainData.chainHolderSkyLight = LightTexture.sky(endPackedLight);
-            renderChainData.sourceItem = chainData.sourceItem;
-            renderChainData.tintColor = chainTint(renderChainData, level, chainData.sourceItem, srcPos, dstPos);
-            renderChainData.useBaked = chainHolder instanceof HangingEntity;
-            renderChainData.slack = chainData.getSlack();
-            renderChainData.buntings = chainData.buntings.isEmpty() ? List.of() : new ArrayList<>(chainData.buntings);
-            renderChainData.banners = chainData.banners.isEmpty() ? List.of() : new ArrayList<>(chainData.banners);
-            renderChainData.hangings = chainData.hangings.isEmpty() ? List.of() : new ArrayList<>(chainData.hangings);
-        }
-
-        state.sourceItem = entity.getSourceItem();
-        state.knotScaleXZ = entity.getKnotScale();
-        state.knotTintColor = knotTint(state, level, entity.getSourceItem(), entity.blockPosition());
-    }
-
-    private void renderChainLink(PoseStack matrices, MultiBufferSource vertexConsumerProvider, ChainKnotEntityRenderState.ChainData chainData) {
-        Vec3 offset = chainData.offset;
-        Vec3 startPos = chainData.startPos;
-        Vec3 endPos = chainData.endPos;
-        Item sourceItem = chainData.sourceItem;
-
-        CatenaryRenderer renderer = getCatenaryRenderer(sourceItem);
+    private void renderChainLink(PoseStack matrices, MultiBufferSource buffers, ChainKnotEntityRenderState.ChainData chainData) {
         boolean debugDraw = CommonClass.runtimeConfig.doDebugDraw();
-        RenderType chainType = debugDraw ? RenderType.lines() : getChainRenderType(sourceItem);
-        VertexConsumer vertexConsumer = vertexConsumerProvider.getBuffer(chainType);
-
-        if (!Chainable.isValidChainDistance(startPos, endPos)) return;
-
-        Vector3f chainVec = new Vector3f((float) (endPos.x - startPos.x), (float) (endPos.y - startPos.y), (float) (endPos.z - startPos.z));
-        float angleY = -(float) Math.atan2(chainVec.z(), chainVec.x());
+        RenderType chainType = debugDraw ? RenderType.lines() : getChainRenderType(chainData.sourceItem);
+        Vector3f chainVec = chainData.endPos.subtract(chainData.startPos).toVector3f();
 
         matrices.pushPose();
-        matrices.translate(offset.x, offset.y, offset.z);
+        matrices.translate(chainData.offset.x, chainData.offset.y, chainData.offset.z);
 
         PoseStack.Pose pose = matrices.last();
-        if (chainData.useBaked) {
-            chainRenderer.renderBaked(renderer, vertexConsumer, pose, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
-        } else {
-            chainRenderer.render(renderer, vertexConsumer, pose, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
-        }
-
+        renderChain(buffers.getBuffer(chainType), pose, chainVec, chainData);
         if (debugDraw) {
-            drawDebugVector(pose.pose(), startPos, endPos, vertexConsumerProvider.getBuffer(RenderType.lines()));
+            drawDebugVector(pose.pose(), chainData.startPos, chainData.endPos, buffers.getBuffer(RenderType.lines()));
         }
 
-        matrices.mulPose(new Quaternionf().rotateXYZ(0, angleY, 0));
-
-        if (!chainData.buntings.isEmpty()) {
-            renderBuntingsAlongChain(matrices, vertexConsumerProvider, chainVec, chainData);
-        }
-
-        if (!chainData.banners.isEmpty()) {
-            renderBannersAlongChain(matrices, vertexConsumerProvider, chainVec, chainData);
-        }
-
-        if (!chainData.hangings.isEmpty()) {
-            renderHangingsAlongChain(matrices, vertexConsumerProvider, chainVec, chainData);
-        }
-
+        matrices.mulPose(new Quaternionf().rotationY(yawOf(chainVec)));
+        renderBuntingsAlongChain(matrices, buffers, chainVec, chainData);
+        renderBannersAlongChain(matrices, buffers, chainVec, chainData);
+        renderHangingsAlongChain(matrices, buffers, chainVec, chainData);
         matrices.popPose();
     }
 
     private void renderBuntingsAlongChain(PoseStack matrices, MultiBufferSource buffers, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
-        float distanceXZ = (float) Math.sqrt(chainVec.x() * chainVec.x() + chainVec.z() * chainVec.z());
-        if (distanceXZ < 0.1f) return;
-
-        float distance = chainVec.length();
-        float wrongDistanceFactor = distance / distanceXZ;
-
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
-        long gameTime = mc.level.getGameTime();
-
-        MathHelper.Catenary catenary = MathHelper.Catenary.of(distance, chainVec.y(), chainData.slack);
+        if (chainData.buntings.isEmpty()) return;
+        ChainCurve curve = ChainCurve.of(chainVec, chainData.slack);
+        Level level = Minecraft.getInstance().level;
+        if (curve == null || level == null) return;
+        long gameTime = level.getGameTime();
 
         for (Chainable.ChainData.BuntingEntry entry : chainData.buntings) {
             if (buntingItem(entry.color()) == Items.AIR) continue;
 
-            float t = entry.t();
-            float x = t * distanceXZ;
-            float y = (float) catenary.y(x * wrongDistanceFactor);
-
-            float slope = (float) (catenary.slope(x * wrongDistanceFactor) * wrongDistanceFactor);
-            float pitchRad = (float) Math.atan2(slope, 1.0);
-
-            int light = lerpLight(chainData, t);
-            BlockPos buntingBlockPos = BlockPos.containing(chainData.startPos.lerp(chainData.endPos, t));
+            float x = curve.x(entry.t());
+            float y = curve.y(x);
+            float pitch = (float) Math.atan2(curve.slope(x), 1.0);
+            int light = lerpLight(chainData, entry.t());
+            BlockPos buntingPos = BlockPos.containing(chainData.startPos.lerp(chainData.endPos, entry.t()));
 
             matrices.pushPose();
             matrices.translate(x, y, 0);
-            matrices.mulPose(new Quaternionf().rotateZ(pitchRad));
+            matrices.mulPose(new Quaternionf().rotateZ(pitch));
             matrices.translate(0.25f, -0.19f, 0.0f);
-            SupplementariesCompat.renderBunting(entry.color(), matrices, buffers, light, buntingBlockPos, gameTime);
+            SupplementariesCompat.renderBunting(entry.color(), matrices, buffers, light, buntingPos, gameTime);
             matrices.popPose();
         }
     }
 
     private void renderBannersAlongChain(PoseStack matrices, MultiBufferSource buffers, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
-        float distanceXZ = (float) Math.sqrt(chainVec.x() * chainVec.x() + chainVec.z() * chainVec.z());
-        if (distanceXZ < 0.1f) return;
-
-        float distance = chainVec.length();
-        float wrongDistanceFactor = distance / distanceXZ;
-
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
-
-        MathHelper.Catenary catenary = MathHelper.Catenary.of(distance, chainVec.y(), chainData.slack);
+        if (chainData.banners.isEmpty()) return;
+        ChainCurve curve = ChainCurve.of(chainVec, chainData.slack);
+        Level level = Minecraft.getInstance().level;
+        if (curve == null || level == null) return;
 
         for (Chainable.ChainData.BannerEntry entry : chainData.banners) {
-            float t = entry.t();
-            float x = t * distanceXZ;
-            float y = (float) catenary.y(x * wrongDistanceFactor);
-
-            int light = lerpLight(chainData, t);
-            BannerPatternLayers patterns = bannerPatterns(mc.level, entry.data());
+            float x = curve.x(entry.t());
+            float y = curve.y(x);
+            int light = lerpLight(chainData, entry.t());
+            BannerPatternLayers patterns = bannerPatterns(level, entry.data());
 
             renderBannerConnector(matrices.last(), buffers.getBuffer(BANNER_CONNECTOR_RENDER_TYPE), light, x, y);
 
             matrices.pushPose();
-            matrices.translate(x, y, 0);
-            matrices.mulPose(new Quaternionf().rotateX((float) Math.PI));
-            matrices.scale(0.66f, 0.66f, 0.66f);
-
-            matrices.translate(0, 0.375, 0.07);
+            transformToBanner(matrices, x, y);
             BannerRenderer.renderPatterns(matrices, buffers, light, OverlayTexture.NO_OVERLAY, bannerFlag, ModelBakery.BANNER_BASE, true, entry.color(), patterns);
             matrices.translate(0, 0, -0.07);
             matrices.mulPose(new Quaternionf().rotateY((float) Math.PI));
             matrices.translate(0, 0, 0.07);
             BannerRenderer.renderPatterns(matrices, buffers, light, OverlayTexture.NO_OVERLAY, bannerFlag, ModelBakery.BANNER_BASE, true, entry.color(), patterns);
-
             matrices.popPose();
         }
     }
+*///?}
 
-    private void renderHangingsAlongChain(PoseStack matrices, MultiBufferSource buffers, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
-        float distanceXZ = (float) Math.sqrt(chainVec.x() * chainVec.x() + chainVec.z() * chainVec.z());
-        if (distanceXZ < 0.1f) return;
+    private void fillRenderState(ChainKnotEntity entity, ChainKnotEntityRenderState state, float tickDelta) {
+        Level level = entity.level();
+        discardStateOnLevelChange(level);
 
-        float distance = chainVec.length();
-        float wrongDistanceFactor = distance / distanceXZ;
+        state.attachedFace = entity.attachedFace;
+        state.sourceItem = entity.getSourceItem();
+        state.knotScaleXZ = entity.getKnotScale();
+        state.knotTintColor = tintColor(level, state.sourceItem, entity.blockPosition());
+        state.reset();
 
+        Vec3 entityPos = entity.getPosition(tickDelta);
+        Vec3 srcPos = entity.getChainPos(tickDelta);
+        int startLight = this.getPackedLightCoords(entity, tickDelta);
+
+        for (Chainable.ChainData chainData : entity.getChainDataArray()) {
+            Entity chainHolder = entity.getChainHolder(chainData);
+            if (chainHolder == null) continue;
+
+            Vec3 dstPos = chainHolder instanceof ChainKnotEntity knot
+                    ? knot.getChainPos(tickDelta)
+                    : chainHolder.getRopeHoldPosition(tickDelta);
+            //? if <26.1 {
+            /*dstPos = SableHelper.transformHolderPosForRenderer(level, entity, chainHolder, dstPos, tickDelta);
+            *///?}
+            if (!Chainable.isValidChainDistance(srcPos, dstPos)) continue;
+
+            int endLight = this.entityRenderDispatcher.getPackedLightCoords(chainHolder, tickDelta);
+
+            ChainKnotEntityRenderState.ChainData data = state.claim();
+            data.offset = srcPos.subtract(entityPos);
+            data.startPos = srcPos;
+            data.endPos = dstPos;
+            //? if >=26.1 {
+            data.chainedEntityBlockLight = LightCoordsUtil.block(startLight);
+            data.chainHolderBlockLight = LightCoordsUtil.block(endLight);
+            data.chainedEntitySkyLight = LightCoordsUtil.sky(startLight);
+            data.chainHolderSkyLight = LightCoordsUtil.sky(endLight);
+            //?} else {
+            /*data.chainedEntityBlockLight = LightTexture.block(startLight);
+            data.chainHolderBlockLight = LightTexture.block(endLight);
+            data.chainedEntitySkyLight = LightTexture.sky(startLight);
+            data.chainHolderSkyLight = LightTexture.sky(endLight);
+            *///?}
+            data.sourceItem = chainData.sourceItem;
+            data.tintColor = tintColor(level, chainData.sourceItem, BlockPos.containing(srcPos.lerp(dstPos, 0.5)));
+            data.useBaked = chainHolder instanceof HangingEntity;
+            data.slack = chainData.getSlack();
+            data.buntings = List.copyOf(chainData.buntings);
+            data.banners = List.copyOf(chainData.banners);
+            data.hangings = List.copyOf(chainData.hangings);
+        }
+    }
+
+    private static void transformToKnot(PoseStack poseStack, ChainKnotEntityRenderState state) {
+        if (state.attachedFace != null) {
+            switch (state.attachedFace) {
+                case DOWN -> poseStack.mulPose(new Quaternionf().rotateX((float) Math.PI));
+                case NORTH -> poseStack.mulPose(new Quaternionf().rotateX((float) -Math.PI / 2f));
+                case SOUTH -> poseStack.mulPose(new Quaternionf().rotateX((float) Math.PI / 2f));
+                case WEST -> poseStack.mulPose(new Quaternionf().rotateZ((float) Math.PI / 2f));
+                case EAST -> poseStack.mulPose(new Quaternionf().rotateZ((float) -Math.PI / 2f));
+                case UP -> {
+                }
+            }
+        }
+        poseStack.translate(0, 0.5, 0);
+        poseStack.scale(state.knotScaleXZ, 1, state.knotScaleXZ);
+    }
+
+    private static void transformToBanner(PoseStack poseStack, float x, float y) {
+        poseStack.translate(x, y, 0);
+        poseStack.mulPose(new Quaternionf().rotateX((float) Math.PI));
+        poseStack.scale(0.66f, 0.66f, 0.66f);
+        poseStack.translate(0, 0.375, 0.07);
+    }
+
+    private void renderChain(VertexConsumer buffer, PoseStack.Pose pose, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
+        CatenaryRenderer renderer = getTextureManager().getCatenaryRenderer(chainData.sourceItem);
+        if (chainData.useBaked) {
+            chainRenderer.renderBaked(renderer, buffer, pose, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
+        } else {
+            chainRenderer.render(renderer, buffer, pose, chainVec, chainData.slack, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight, chainData.tintColor);
+        }
+    }
+
+//? if >=26.1 {
+    private void renderHangingsAlongChain(PoseStack poseStack, SubmitNodeCollector out, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
+//?} else {
+    /*private void renderHangingsAlongChain(PoseStack poseStack, MultiBufferSource out, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
+*///?}
+        if (chainData.hangings.isEmpty()) return;
+        ChainCurve curve = ChainCurve.of(chainVec, chainData.slack);
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
-
-        MathHelper.Catenary curve = MathHelper.Catenary.of(distance, chainVec.y(), chainData.slack);
+        if (curve == null || mc.level == null) return;
 
         for (Chainable.ChainData.HangingEntry entry : chainData.hangings) {
             float t = entry.t();
-            float x = t * distanceXZ;
-            float y = (float) curve.y(x * wrongDistanceFactor);
+            float x = curve.x(t);
+            float y = curve.y(x);
 
             double worldX = Mth.lerp(t, chainData.startPos.x(), chainData.endPos.x());
             double worldY = chainData.startPos.y() + y;
             double worldZ = Mth.lerp(t, chainData.startPos.z(), chainData.endPos.z());
             BlockPos pos = BlockPos.containing(worldX, worldY - 1.0, worldZ);
 
-            hangingBlockRenderer.render(mc, entry.blockId(), pos, matrices, buffers, x, y);
+            hangingBlockRenderer.render(mc, entry.blockId(), pos, poseStack, out, x, y);
         }
     }
 
-    private void renderBannerConnector(PoseStack.Pose pose, VertexConsumer vc, int light, float x, float y) {
-*///?}
+    private static void renderBannerConnector(PoseStack.Pose pose, VertexConsumer vc, int light, float x, float y) {
         float hw = 6.0f / 16.0f;
         float h = 6.0f / 16.0f;
         float u1 = 12.0f / 16.0f;
         float v1 = 6.0f / 16.0f;
         float zF = 0.005f, zB = -0.005f;
 
-        // Front face
-        vc.addVertex(pose, x - hw, y, zF).setColor(255, 255, 255, 255).setUv(0, 0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, 1);
-        vc.addVertex(pose, x - hw, y - h, zF).setColor(255, 255, 255, 255).setUv(0, v1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, 1);
-        vc.addVertex(pose, x + hw, y - h, zF).setColor(255, 255, 255, 255).setUv(u1, v1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, 1);
-        vc.addVertex(pose, x + hw, y, zF).setColor(255, 255, 255, 255).setUv(u1, 0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, 1);
+        connectorVertex(vc, pose, x - hw, y, zF, 0, 0, light, 1);
+        connectorVertex(vc, pose, x - hw, y - h, zF, 0, v1, light, 1);
+        connectorVertex(vc, pose, x + hw, y - h, zF, u1, v1, light, 1);
+        connectorVertex(vc, pose, x + hw, y, zF, u1, 0, light, 1);
 
-        // Back face
-        vc.addVertex(pose, x + hw, y, zB).setColor(255, 255, 255, 255).setUv(0, 0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, -1);
-        vc.addVertex(pose, x + hw, y - h, zB).setColor(255, 255, 255, 255).setUv(0, v1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, -1);
-        vc.addVertex(pose, x - hw, y - h, zB).setColor(255, 255, 255, 255).setUv(u1, v1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, -1);
-        vc.addVertex(pose, x - hw, y, zB).setColor(255, 255, 255, 255).setUv(u1, 0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, -1);
+        connectorVertex(vc, pose, x + hw, y, zB, 0, 0, light, -1);
+        connectorVertex(vc, pose, x + hw, y - h, zB, 0, v1, light, -1);
+        connectorVertex(vc, pose, x - hw, y - h, zB, u1, v1, light, -1);
+        connectorVertex(vc, pose, x - hw, y, zB, u1, 0, light, -1);
+    }
+
+    private static void connectorVertex(VertexConsumer vc, PoseStack.Pose pose, float x, float y, float z, float u, float v, int light, float normalZ) {
+        vc.addVertex(pose, x, y, z)
+                .setColor(255, 255, 255, 255)
+                .setUv(u, v)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(light)
+                .setNormal(pose, 0, 0, normalZ);
     }
 
     public ChainRenderer getChainRenderer() {
@@ -695,20 +532,21 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         chainRenderer.purge();
         chainRenderTypes.clear();
         knotRenderTypes.clear();
-        tintEpoch++;
     }
 
     private void discardStateOnLevelChange(Level level) {
-        if (lastLevel != level) {
-            lastLevel = level;
-            chainRenderer.purge();
-            hangingBlockRenderer.clear();
-            bannerPatternCache.clear();
-            tintEpoch++;
-        }
+        if (lastLevel == level) return;
+        lastLevel = level;
+        chainRenderer.purge();
+        hangingBlockRenderer.clear();
+        bannerPatternCache.clear();
     }
 
-    private int lerpLight(ChainKnotEntityRenderState.ChainData chainData, float t) {
+    private static float yawOf(Vector3f chainVec) {
+        return -(float) Math.atan2(chainVec.z(), chainVec.x());
+    }
+
+    private static int lerpLight(ChainKnotEntityRenderState.ChainData chainData, float t) {
         int blockLight = (int) Mth.lerp(t, chainData.chainedEntityBlockLight, chainData.chainHolderBlockLight);
         int skyLight = (int) Mth.lerp(t, chainData.chainedEntitySkyLight, chainData.chainHolderSkyLight);
         //? if >=26.1 {
@@ -731,8 +569,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         return parsed;
     }
 
-    private void drawDebugVector(Matrix4f matrix, Vec3 startPos, Vec3 endPos, VertexConsumer buffer) {
-        if (startPos == null) return;
+    private static void drawDebugVector(Matrix4f matrix, Vec3 startPos, Vec3 endPos, VertexConsumer buffer) {
         Vec3 vec = endPos.subtract(startPos);
         float yaw = -(float) Math.atan2(vec.z(), vec.x());
         float cos = (float) Math.cos(yaw);
@@ -741,15 +578,14 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         float z = (float) (-vec.x * sin + vec.z * cos);
         Vec3 normal = vec.normalize();
 
-        addVertex(buffer, matrix, 0, 0, 0, 0, 255, 0, 255, normal);
-        addVertex(buffer, matrix, x, (float) vec.y, z, 255, 0, 0, 255, normal);
+        debugVertex(buffer, matrix, 0, 0, 0, 0, 255, 0, normal);
+        debugVertex(buffer, matrix, x, (float) vec.y, z, 255, 0, 0, normal);
     }
 
-    private void addVertex(VertexConsumer buffer, Matrix4f matrix, float x, float y, float z, int r, int g, int b, int a, Vec3 normal) {
-        Vector4f vector = new Vector4f(x, y, z, 1.0F);
-        vector.mul(matrix);
+    private static void debugVertex(VertexConsumer buffer, Matrix4f matrix, float x, float y, float z, int r, int g, int b, Vec3 normal) {
+        Vector4f vector = new Vector4f(x, y, z, 1.0F).mul(matrix);
         buffer.addVertex(vector.x, vector.y, vector.z)
-                .setColor(r, g, b, a)
+                .setColor(r, g, b, 255)
                 //? if >=26.1 {
                 .setNormal((float) normal.x, (float) normal.y, (float) normal.z)
                 .setLineWidth(1.0F);
@@ -758,108 +594,60 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
                 *///?}
     }
 
-    private ChainTextureManager getTextureManager() {
+    private static ChainTextureManager getTextureManager() {
         return ClientInitializer.getInstance().getChainTextureManager();
     }
 
-    private Identifier getKnotTexture(Item item) {
-        return getTextureManager().getKnotTexture(item);
-    }
-
-    private Identifier getChainTexture(Item item) {
-        return getTextureManager().getChainTexture(item);
-    }
-
-    private CatenaryRenderer getCatenaryRenderer(Item item) {
-        return getTextureManager().getCatenaryRenderer(item);
-    }
-
-    private int computeChainTintColor(Level level, Item sourceItem, BlockPos pos) {
-        return getTextureManager().getTint(sourceItem)
-                .map(tint -> 0xFF000000 | sampleBiomeColor(level, tint, pos))
-                .orElse(0xFFFFFFFF);
-    }
-
-    private int chainTint(ChainKnotEntityRenderState.ChainData chain, Level level, Item item, Vec3 srcPos, Vec3 dstPos) {
-        double x = (srcPos.x + dstPos.x) * 0.5;
-        double y = (srcPos.y + dstPos.y) * 0.5;
-        double z = (srcPos.z + dstPos.z) * 0.5;
-        long key = BlockPos.asLong(Mth.floor(x), Mth.floor(y), Mth.floor(z));
-        long stamp = tintStamp(level);
-
-        if (chain.tintStamp == stamp && chain.tintItem == item && chain.tintPos == key) {
-            return chain.tintColor;
-        }
-
-        int color = computeChainTintColor(level, item, BlockPos.containing(x, y, z));
-        chain.tintStamp = stamp;
-        chain.tintItem = item;
-        chain.tintPos = key;
-        chain.tintColor = color;
-        return color;
-    }
-
-    private int knotTint(ChainKnotEntityRenderState state, Level level, Item item, BlockPos pos) {
-        long key = pos.asLong();
-        long stamp = tintStamp(level);
-        if (state.knotTintStamp == stamp && state.knotTintItem == item && state.knotTintPos == key) {
-            return state.knotTintColor;
-        }
-
-        int color = computeKnotTintColor(level, item, pos);
-        state.knotTintStamp = stamp;
-        state.knotTintItem = item;
-        state.knotTintPos = key;
-        state.knotTintColor = color;
-        return color;
-    }
-
-    private long tintStamp(Level level) {
-        // Biomes can change at runtime, so let cached tints go stale eventually.
-        return ((long) tintEpoch << 40) | (level.getGameTime() / 200L);
-    }
-
     private RenderType getChainRenderType(Item item) {
-        RenderType cached = chainRenderTypes.get(item);
-        if (cached != null) return cached;
-
-        // Chain quads are single sided now, so they must not be backface culled.
         //? if >=26.1 {
-        cached = RenderTypes.entityCutout(getChainTexture(item));
+        return chainRenderTypes.computeIfAbsent(item, i -> RenderTypes.entityCutout(getTextureManager().getChainTexture(i)));
         //?} else {
-        /*cached = RenderType.entityCutoutNoCull(getChainTexture(item));
+        /*return chainRenderTypes.computeIfAbsent(item, i -> RenderType.entityCutoutNoCull(getTextureManager().getChainTexture(i)));
         *///?}
-        chainRenderTypes.put(item, cached);
-        return cached;
     }
 
     private RenderType getKnotRenderType(Item item) {
-        RenderType cached = knotRenderTypes.get(item);
-        if (cached != null) return cached;
-
-        // The knot model is built from closed boxes, so culling is free here.
         //? if >=26.1 {
-        cached = RenderTypes.entityCutoutCull(getKnotTexture(item));
+        return knotRenderTypes.computeIfAbsent(item, i -> RenderTypes.entityCutoutCull(getTextureManager().getKnotTexture(i)));
         //?} else {
-        /*cached = RenderType.entityCutout(getKnotTexture(item));
+        /*return knotRenderTypes.computeIfAbsent(item, i -> RenderType.entityCutout(getTextureManager().getKnotTexture(i)));
         *///?}
-        knotRenderTypes.put(item, cached);
-        return cached;
     }
 
-    private int computeKnotTintColor(Level level, Item sourceItem, BlockPos pos) {
-        return getTextureManager().getTint(sourceItem)
+    private static int tintColor(Level level, Item item, BlockPos pos) {
+        return getTextureManager().getTint(item)
                 .map(tint -> 0xFF000000 | sampleBiomeColor(level, tint, pos))
-                .orElse(0xFFFFFFFF);
+                .orElse(NO_TINT);
     }
 
-    private int sampleBiomeColor(Level level, String tintType, BlockPos pos) {
-        if (!(level instanceof net.minecraft.client.multiplayer.ClientLevel clientLevel)) return 0xCCCCCC;
+    private static int sampleBiomeColor(Level level, String tintType, BlockPos pos) {
+        if (!(level instanceof ClientLevel clientLevel)) return DEFAULT_BIOME_COLOR;
         return switch (tintType) {
             case "foliage" -> BiomeColors.getAverageFoliageColor(clientLevel, pos);
             case "grass" -> BiomeColors.getAverageGrassColor(clientLevel, pos);
             case "water" -> BiomeColors.getAverageWaterColor(clientLevel, pos);
-            default -> 0xCCCCCC;
+            default -> DEFAULT_BIOME_COLOR;
         };
+    }
+
+    private record ChainCurve(float distanceXZ, float stretch, MathHelper.Catenary catenary) {
+        static @Nullable ChainCurve of(Vector3f chainVec, float slack) {
+            float distanceXZ = (float) Math.sqrt(chainVec.x() * chainVec.x() + chainVec.z() * chainVec.z());
+            if (distanceXZ < 0.1f) return null;
+            float distance = chainVec.length();
+            return new ChainCurve(distanceXZ, distance / distanceXZ, MathHelper.Catenary.of(distance, chainVec.y(), slack));
+        }
+
+        float x(float t) {
+            return t * distanceXZ;
+        }
+
+        float y(float x) {
+            return (float) catenary.y(x * stretch);
+        }
+
+        float slope(float x) {
+            return (float) (catenary.slope(x * stretch) * stretch);
+        }
     }
 }

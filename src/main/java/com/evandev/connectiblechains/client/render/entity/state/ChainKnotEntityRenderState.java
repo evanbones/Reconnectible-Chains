@@ -1,7 +1,6 @@
 package com.evandev.connectiblechains.client.render.entity.state;
 
 import com.evandev.connectiblechains.entity.Chainable;
-import com.mojang.blaze3d.vertex.PoseStack;
 //? if >=26.1
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.core.Direction;
@@ -17,15 +16,11 @@ public class ChainKnotEntityRenderState extends EntityRenderState {
 /*public class ChainKnotEntityRenderState {
 *///?}
 
-    public final PoseStack scratch = new PoseStack();
     public final List<ChainData> chainDataSet = new ArrayList<>();
     private final List<ChainData> pool = new ArrayList<>();
     public Item sourceItem;
     public Direction attachedFace = Direction.UP;
     public int knotTintColor = 0xFFFFFFFF;
-    public Item knotTintItem;
-    public long knotTintPos = Long.MIN_VALUE;
-    public long knotTintStamp = Long.MIN_VALUE;
     public float knotScaleXZ = 5 / 6f;
 
     public void reset() {
@@ -56,9 +51,6 @@ public class ChainKnotEntityRenderState extends EntityRenderState {
         public int chainedEntitySkyLight = 15;
         public int chainHolderSkyLight = 15;
         public int tintColor = 0xFFCCCCCC;
-        public Item tintItem;
-        public long tintPos = Long.MIN_VALUE;
-        public long tintStamp = Long.MIN_VALUE;
         public List<Chainable.ChainData.BuntingEntry> buntings = List.of();
         public List<Chainable.ChainData.BannerEntry> banners = List.of();
         public List<Chainable.ChainData.HangingEntry> hangings = List.of();
