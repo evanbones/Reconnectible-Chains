@@ -1,6 +1,7 @@
 package com.evandev.connectiblechains.util;
 
 import com.evandev.connectiblechains.entity.Chainable;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 
 import java.util.*;
@@ -27,6 +28,7 @@ public class ChainTracker {
         Set<Chainable> chains = TRACKED_CHAINS.get(level);
         if (chains == null) return List.of();
         synchronized (chains) {
+            chains.removeIf(chainable -> ((Entity) chainable).isRemoved());
             return List.copyOf(chains);
         }
     }

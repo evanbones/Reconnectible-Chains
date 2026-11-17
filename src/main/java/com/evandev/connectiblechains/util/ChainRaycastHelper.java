@@ -37,11 +37,6 @@ public class ChainRaycastHelper {
 
     private static long lastRemovalTick = -100L;
 
-    /**
-     * Attempts to place a bunting on a looked-at rope chain.
-     *
-     * @return true if a rope chain was found and interacted with.
-     */
     public static boolean tryPlaceBunting(Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!stack.is(ModTagRegistry.BUNTING_ITEMS)) return false;
@@ -115,7 +110,7 @@ public class ChainRaycastHelper {
             for (Chainable.ChainData cd : new ArrayList<>(chainable.getChainDataSet())) {
                 if (cd.buntings.isEmpty() && cd.banners.isEmpty() && cd.hangings.isEmpty()) continue;
                 Entity h = chainable.getChainHolder(cd);
-                if (!(h instanceof ChainKnotEntity knot)) continue;
+                if (!(h instanceof ChainKnotEntity knot) || knot.isRemoved()) continue;
 
                 Vec3 srcPos = chainable.getChainPos(1.0f);
                 Vec3 dstPos = knot.getChainPos(1.0f);
@@ -358,11 +353,6 @@ public class ChainRaycastHelper {
         return DyeColor.byName(path.substring("bunting_".length()), null);
     }
 
-    /**
-     * Attempts to adjust the slack of a looked-at chain.
-     *
-     * @return true if a chain was clicked and interacted with, false otherwise.
-     */
     public static boolean tryAdjustSlack(Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!stack.is(ModTagRegistry.SHEAR_TOOLS)) return false;
@@ -439,16 +429,10 @@ public class ChainRaycastHelper {
         return true;
     }
 
-    /**
-     * Casts a ray from the player's camera to find the closest chain curve.
-     */
     public static Optional<ChainHitResult> raycastChains(Player player, double reach) {
         return raycastChains(player, reach, 0.25);
     }
 
-    /**
-     * Casts a ray from the player's camera to find the closest chain curve, with a configurable hit tolerance.
-     */
     public static Optional<ChainHitResult> raycastChains(Player player, double reach, double tolerance) {
         Vec3 rayOrigin = player.getEyePosition(1.0f);
         Vec3 rayDir = player.getViewVector(1.0f);
@@ -465,7 +449,7 @@ public class ChainRaycastHelper {
 
             for (Chainable.ChainData chainData : new ArrayList<>(chainable.getChainDataSet())) {
                 Entity chainHolder = chainable.getChainHolder(chainData);
-                if (chainHolder == null) continue;
+                if (chainHolder == null || chainHolder.isRemoved()) continue;
 
                 Vec3 srcPos = chainable.getChainPos(1.0f);
                 Vec3 dstPos;
@@ -521,9 +505,6 @@ public class ChainRaycastHelper {
         return Optional.ofNullable(bestHit);
     }
 
-    /**
-     * Attempts to break a looked-at chain.
-     */
     public static boolean tryBreakChain(Player player) {
         ItemStack stack = player.getMainHandItem();
         if (!stack.is(ModTagRegistry.SHEAR_TOOLS)) return false;
@@ -549,16 +530,10 @@ public class ChainRaycastHelper {
         return true;
     }
 
-    /**
-     * Calculates the shortest distance between a ray and a 3D line segment.
-     */
     private static double distanceRaySegment(Vec3 rayOrigin, Vec3 rayDir, Vec3 p0, Vec3 p1, double maxReach) {
         return distanceRaySegmentEx(rayOrigin, rayDir, p0, p1, maxReach)[0];
     }
 
-    /**
-     * Returns [distance, tc] where tc is the segment parameter [0, 1] at the closest point.
-     */
     private static double[] distanceRaySegmentEx(Vec3 rayOrigin, Vec3 rayDir, Vec3 p0, Vec3 p1, double maxReach) {
         Vec3 v = p1.subtract(p0);
         Vec3 w = rayOrigin.subtract(p0);
