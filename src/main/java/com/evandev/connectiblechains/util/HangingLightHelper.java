@@ -10,6 +10,7 @@ import com.evandev.connectiblechains.entity.Chainable;
 *///?}
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -21,10 +22,41 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class HangingLightHelper {
+
+    private static final float GLOW_LIGHTS_SPACING = 2.0f;
 
     @Nullable
     public static BlockPos computeLightPos(Entity src, Entity dst, float t, float slack) {
+        Vec3[] ends = chainEnds(src, dst);
+        if (ends == null) return null;
+
+        Vec3 anchor = HangingBlockPlacement.anchor(ends[0], ends[1], t, slack);
+        return BlockPos.containing(anchor.x(), anchor.y() - 1.0, anchor.z());
+    }
+
+    private static List<BlockPos> glowLightsPositions(Entity src, Entity dst, float slack) {
+        Vec3[] ends = chainEnds(src, dst);
+        if (ends == null) return List.of();
+
+        int count = Math.max(1, Math.round((float) ends[0].distanceTo(ends[1]) / GLOW_LIGHTS_SPACING));
+        List<BlockPos> positions = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            positions.add(BlockPos.containing(HangingBlockPlacement.anchor(ends[0], ends[1], (i + 0.5f) / count, slack)));
+        }
+        return positions;
+    }
+
+    private static int glowLightsEmission(Identifier glowLights) {
+        Block block = Block.byItem(BuiltInRegistries.ITEM.getValue(glowLights));
+        return block.defaultBlockState().getLightEmission();
+    }
+
+    @Nullable
+    private static Vec3[] chainEnds(Entity src, Entity dst) {
         if (!(src instanceof ChainKnotEntity srcKnot)) return null;
         if (!(dst instanceof ChainKnotEntity dstKnot)) return null;
         Vec3 srcPos = srcKnot.getChainPos(1.0f);
@@ -39,9 +71,7 @@ public class HangingLightHelper {
 *///?}
         double dist = srcPos.distanceTo(dstPos);
         if (dist < 0.01 || dist > 64.0) return null;
-
-        Vec3 anchor = HangingBlockPlacement.anchor(srcPos, dstPos, t, slack);
-        return BlockPos.containing(anchor.x(), anchor.y() - 1.0, anchor.z());
+        return new Vec3[]{srcPos, dstPos};
     }
 
     public static void place(ServerLevel level, BlockPos pos, int emission) {
@@ -61,8 +91,11 @@ public class HangingLightHelper {
     }
 
     public static void placeAllForChain(ServerLevel level, Entity src, Entity dst, Chainable.ChainData chainData) {
-        if (chainData.hangings.isEmpty()) return;
         float slack = chainData.getSlack();
+        if (chainData.glowLights != null) {
+            int emission = glowLightsEmission(chainData.glowLights);
+            for (BlockPos pos : glowLightsPositions(src, dst, slack)) place(level, pos, emission);
+        }
         for (Chainable.ChainData.HangingEntry entry : chainData.hangings) {
             Block block = BuiltInRegistries.BLOCK.getValue(entry.blockId());
             if (block == Blocks.AIR) continue;
@@ -77,8 +110,10 @@ public class HangingLightHelper {
     }
 
     public static void removeAllForChain(ServerLevel level, Entity src, Entity dst, Chainable.ChainData chainData) {
-        if (chainData.hangings.isEmpty()) return;
         float slack = chainData.getSlack();
+        if (chainData.glowLights != null) {
+            for (BlockPos pos : glowLightsPositions(src, dst, slack)) remove(level, pos);
+        }
         for (Chainable.ChainData.HangingEntry entry : chainData.hangings) {
             BlockPos pos = computeLightPos(src, dst, entry.t(), slack);
             if (pos != null) remove(level, pos);

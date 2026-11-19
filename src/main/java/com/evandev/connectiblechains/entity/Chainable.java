@@ -52,6 +52,7 @@ import java.util.*;
 public interface Chainable {
     String CHAINS_NBT_KEY = "Chains";
     String SOURCE_ITEM_KEY = "SourceItem";
+    String GLOW_LIGHTS_KEY = "GlowLights";
 
     static double getMaxChainLength() {
         return CommonClass.runtimeConfig.getMaxChainRange();
@@ -127,6 +128,7 @@ public interface Chainable {
                             }
                         }
                     });
+                    element.getString(GLOW_LIGHTS_KEY).map(Identifier::tryParse).ifPresent(id -> finalChainData.glowLights = id);
                     result.add(newChainData);
                 }
             }
@@ -184,6 +186,9 @@ public interface Chainable {
                             if (blockId != null)
                                 newChainData.hangings.add(new ChainData.HangingEntry(hangingTag.getFloat("T"), blockId));
                         }
+                    }
+                    if (compound.contains(GLOW_LIGHTS_KEY, Tag.TAG_STRING)) {
+                        newChainData.glowLights = Identifier.tryParse(compound.getString(GLOW_LIGHTS_KEY));
                     }
                     result.add(newChainData);
                 }
@@ -281,6 +286,11 @@ public interface Chainable {
                         if (hangingItem != Items.AIR)
                             spawnAtLocation(entity, serverWorld, new ItemStack(hangingItem));
                     }
+                    if (chainData.glowLights != null) {
+                        Item glowLightsItem = BuiltInRegistries.ITEM.getValue(chainData.glowLights);
+                        if (glowLightsItem != Items.AIR)
+                            spawnAtLocation(entity, serverWorld, new ItemStack(glowLightsItem));
+                    }
                 }
 
                 if (sendPacket) {
@@ -344,6 +354,9 @@ public interface Chainable {
             if (!chainData.hangings.isEmpty()) {
                 Services.NETWORK.sendToAllClients(serverLevel.getServer(), new HangingSyncS2CPacket(entity.getId(), chainData.chainHolder.getId(), new ArrayList<>(chainData.hangings)));
             }
+            if (chainData.glowLights != null) {
+                Services.NETWORK.sendToAllClients(serverLevel.getServer(), new GlowLightsSyncS2CPacket(entity.getId(), chainData.chainHolder.getId(), Optional.of(chainData.glowLights)));
+            }
             HangingLightHelper.placeAllForChain(serverLevel, entity, chainData.chainHolder, chainData);
         }
     }
@@ -380,7 +393,7 @@ public interface Chainable {
                         continue;
                     }
 
-                    if (!chainData.hangings.isEmpty() && level.getGameTime() % 40 == 0) {
+                    if ((!chainData.hangings.isEmpty() || chainData.glowLights != null) && level.getGameTime() % 40 == 0) {
                         HangingLightHelper.placeAllForChain(level, entity, chainHolder, chainData);
                     }
 
@@ -565,6 +578,10 @@ public interface Chainable {
                             hangingOutput.putString("Block", entry.blockId().toString());
                         }
                     }
+
+                    if (chainData.glowLights != null) {
+                        elementOutput.putString(GLOW_LIGHTS_KEY, chainData.glowLights.toString());
+                    }
                 }
             }
         }
@@ -620,6 +637,9 @@ public interface Chainable {
                         }
                         nbtCompound.put("Hangings", hangingList);
                     }
+                    if (chainData.glowLights != null) {
+                        nbtCompound.putString(GLOW_LIGHTS_KEY, chainData.glowLights.toString());
+                    }
                     return nbtCompound;
                 }, blockPos -> {
                     CompoundTag nbtCompound = new CompoundTag();
@@ -657,6 +677,9 @@ public interface Chainable {
                             hangingList.add(ht);
                         }
                         nbtCompound.put("Hangings", hangingList);
+                    }
+                    if (chainData.glowLights != null) {
+                        nbtCompound.putString(GLOW_LIGHTS_KEY, chainData.glowLights.toString());
                     }
                     return nbtCompound;
                 }));
@@ -754,6 +777,8 @@ public interface Chainable {
         public final List<BannerEntry> banners = new ArrayList<>();
         public final List<HangingEntry> hangings = new ArrayList<>();
         @Nullable
+        public Identifier glowLights;
+        @Nullable
         private Entity chainHolder;
         @Nullable
         public Either<UUID, BlockPos> unresolvedChainData;
@@ -804,6 +829,7 @@ public interface Chainable {
             buntings.addAll(other.buntings);
             banners.addAll(other.banners);
             hangings.addAll(other.hangings);
+            glowLights = other.glowLights;
         }
 
         public SoundType getSourceBlockSoundGroup() {

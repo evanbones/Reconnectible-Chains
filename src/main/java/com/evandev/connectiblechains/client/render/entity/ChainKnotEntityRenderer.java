@@ -90,6 +90,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
 
     private final ChainRenderer chainRenderer = new ChainRenderer();
     private final HangingBlockRenderer hangingBlockRenderer = new HangingBlockRenderer();
+    private final GlowLightsRenderer glowLightsRenderer = new GlowLightsRenderer();
     private final Map<Item, RenderType> chainRenderTypes = new Reference2ObjectOpenHashMap<>();
     private final Map<Item, RenderType> knotRenderTypes = new Reference2ObjectOpenHashMap<>();
     private final Map<CompoundTag, BannerPatternLayers> bannerPatternCache =
@@ -203,9 +204,22 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         });
 
         poseStack.mulPose(new Quaternionf().rotationY(yawOf(chainVec)));
+        renderGlowLights(poseStack, collector, chainVec, chainData);
         renderBannersAlongChain(poseStack, collector, chainVec, chainData);
         renderHangingsAlongChain(poseStack, collector, chainVec, chainData);
         poseStack.popPose();
+    }
+
+    private void renderGlowLights(PoseStack poseStack, SubmitNodeCollector collector, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
+        if (chainData.glowLights == null) return;
+        ChainCurve curve = ChainCurve.of(chainVec, chainData.slack);
+        Level level = Minecraft.getInstance().level;
+        if (curve == null || level == null) return;
+        long gameTime = level.getGameTime();
+
+        glowLightsRenderer.sleeve(chainData.glowLights).ifPresent(sleeve ->
+                collector.submitCustomGeometry(poseStack, sleeve.renderType(), (pose, vertexConsumer) ->
+                        glowLightsRenderer.render(pose, vertexConsumer, curve, sleeve, gameTime)));
     }
 
     private void renderBannersAlongChain(PoseStack poseStack, SubmitNodeCollector collector, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
@@ -329,10 +343,22 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         }
 
         matrices.mulPose(new Quaternionf().rotationY(yawOf(chainVec)));
+        renderGlowLights(matrices, buffers, chainVec, chainData);
         renderBuntingsAlongChain(matrices, buffers, chainVec, chainData);
         renderBannersAlongChain(matrices, buffers, chainVec, chainData);
         renderHangingsAlongChain(matrices, buffers, chainVec, chainData);
         matrices.popPose();
+    }
+
+    private void renderGlowLights(PoseStack matrices, MultiBufferSource buffers, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
+        if (chainData.glowLights == null) return;
+        ChainCurve curve = ChainCurve.of(chainVec, chainData.slack);
+        Level level = Minecraft.getInstance().level;
+        if (curve == null || level == null) return;
+        long gameTime = level.getGameTime();
+
+        glowLightsRenderer.sleeve(chainData.glowLights).ifPresent(sleeve ->
+                glowLightsRenderer.render(matrices.last(), buffers.getBuffer(sleeve.renderType()), curve, sleeve, gameTime));
     }
 
     private void renderBuntingsAlongChain(PoseStack matrices, MultiBufferSource buffers, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
@@ -436,6 +462,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
             data.buntings = List.copyOf(chainData.buntings);
             data.banners = List.copyOf(chainData.banners);
             data.hangings = List.copyOf(chainData.hangings);
+            data.glowLights = chainData.glowLights;
         }
     }
 
@@ -529,6 +556,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
     public void onResourceReload() {
         bannerPatternCache.clear();
         hangingBlockRenderer.clear();
+        glowLightsRenderer.clear();
         chainRenderer.purge();
         chainRenderTypes.clear();
         knotRenderTypes.clear();
@@ -630,7 +658,7 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
         };
     }
 
-    private record ChainCurve(float distanceXZ, float stretch, MathHelper.Catenary catenary) {
+    record ChainCurve(float distanceXZ, float stretch, MathHelper.Catenary catenary) {
         static @Nullable ChainCurve of(Vector3f chainVec, float slack) {
             float distanceXZ = (float) Math.sqrt(chainVec.x() * chainVec.x() + chainVec.z() * chainVec.z());
             if (distanceXZ < 0.1f) return null;

@@ -51,6 +51,7 @@ public class ConnectibleChainsMod implements ModInitializer {
             boolean handled = ChainRaycastHelper.tryPlaceBunting(player, hand)
                     || ChainRaycastHelper.tryPlaceBanner(player, hand)
                     || ChainRaycastHelper.tryPlaceHanging(player, hand)
+                    || ChainRaycastHelper.tryPlaceGlowLights(player, hand)
                     || ChainRaycastHelper.tryAdjustSlack(player, hand);
             //? if >=26.1 {
             return handled ? InteractionResult.SUCCESS : InteractionResult.PASS;

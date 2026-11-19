@@ -4,8 +4,10 @@ import com.evandev.connectiblechains.entity.Chainable;
 //? if >=26.1
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,5 +56,7 @@ public class ChainKnotEntityRenderState extends EntityRenderState {
         public List<Chainable.ChainData.BuntingEntry> buntings = List.of();
         public List<Chainable.ChainData.BannerEntry> banners = List.of();
         public List<Chainable.ChainData.HangingEntry> hangings = List.of();
+        @Nullable
+        public Identifier glowLights;
     }
 }

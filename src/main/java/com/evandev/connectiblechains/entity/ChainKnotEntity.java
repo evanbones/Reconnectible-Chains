@@ -52,6 +52,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 
 public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLinkEntity {
     private static final ChainData[] EMPTY_CHAIN_DATA = new ChainData[0];
@@ -554,6 +555,9 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
             }
             if (holder != null && !chainData.hangings.isEmpty()) {
                 Services.NETWORK.sendToClient(player, new HangingSyncS2CPacket(this.getId(), holder.getId(), chainData.hangings));
+            }
+            if (holder != null && chainData.glowLights != null) {
+                Services.NETWORK.sendToClient(player, new GlowLightsSyncS2CPacket(this.getId(), holder.getId(), Optional.of(chainData.glowLights)));
             }
         }
     }

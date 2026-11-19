@@ -44,6 +44,7 @@ public class ConnectibleChainsModClient implements ClientModInitializer {
         FabricClientNetworkHelper.registerClientReceiver(BuntingSyncS2CPacket.class);
         FabricClientNetworkHelper.registerClientReceiver(BannerSyncS2CPacket.class);
         FabricClientNetworkHelper.registerClientReceiver(HangingSyncS2CPacket.class);
+        FabricClientNetworkHelper.registerClientReceiver(GlowLightsSyncS2CPacket.class);
 
         ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new IdentifiableResourceReloadListener() {
             @Override

@@ -86,6 +86,13 @@ repositories {
         }
     }
     maven {
+        name = "MehVahdJukaar"
+        url = uri("https://registry.somethingcatchy.net/repository/maven-public/")
+        content {
+            includeGroup("net.mehvahdjukaar")
+        }
+    }
+    maven {
         name = "Modrinth"
         url = uri("https://api.modrinth.com/maven")
         content {
@@ -113,6 +120,8 @@ dependencies {
         // Supplementaries
         modImplementation("maven.modrinth:supplementaries:${property("deps.supplementaries")}")
         modImplementation("maven.modrinth:moonlight:${property("deps.moonlight")}")
+        // Loom drops Moonlight's nested CodecUI jar in dev
+        modRuntimeOnly("net.mehvahdjukaar:codecui-fabric:${property("deps.codecui")}")
 
         // Sable Companion
         include(modImplementation("dev.ryanhcode.sable-companion:sable-companion-fabric-$mcVersion:${property("deps.sable_companion")}")!!)

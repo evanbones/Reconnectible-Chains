@@ -43,6 +43,12 @@ public class FabricClientNetworkHelper {
                 context.client().execute(() -> HangingSyncS2CPacket.handle(payload, context.player()));
             });
         }
+
+        if (type == GlowLightsSyncS2CPacket.class) {
+            ClientPlayNetworking.registerGlobalReceiver(GlowLightsSyncS2CPacket.TYPE, (payload, context) -> {
+                context.client().execute(() -> GlowLightsSyncS2CPacket.handle(payload, context.player()));
+            });
+        }
     }
 }
 //?}

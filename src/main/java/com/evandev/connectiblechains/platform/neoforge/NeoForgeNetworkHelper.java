@@ -55,6 +55,12 @@ public class NeoForgeNetworkHelper implements INetworkHelper {
                 (payload, context) -> context.enqueueWork(() -> HangingSyncS2CPacket.handle(payload, context.player()))
         );
 
+        registrar.playToClient(
+                GlowLightsSyncS2CPacket.TYPE,
+                GlowLightsSyncS2CPacket.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> GlowLightsSyncS2CPacket.handle(payload, context.player()))
+        );
+
         registrar.playToServer(
                 ChainBreakC2SPacket.TYPE,
                 ChainBreakC2SPacket.STREAM_CODEC,

@@ -5,6 +5,7 @@ import com.evandev.connectiblechains.entity.Chainable;
 import com.evandev.connectiblechains.networking.packet.BannerSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.BuntingSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.ChainSlackSyncS2CPacket;
+import com.evandev.connectiblechains.networking.packet.GlowLightsSyncS2CPacket;
 import com.evandev.connectiblechains.networking.packet.HangingSyncS2CPacket;
 import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
@@ -25,6 +26,8 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BannerPatternLayers;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -152,7 +155,7 @@ public class ChainRaycastHelper {
             }
         }
 
-        if (bestEntry == null) return false;
+        if (bestEntry == null) return tryRemoveGlowLights(player, reach);
 
         if (player.level().isClientSide()) {
             lastRemovalTick = player.level().getGameTime();
@@ -192,6 +195,81 @@ public class ChainRaycastHelper {
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.6f, 0.9f + player.level().getRandom().nextFloat() * 0.3f);
         return true;
+    }
+
+    private static boolean tryRemoveGlowLights(Player player, double reach) {
+        Optional<ChainHitResult> hitOpt = raycastChains(player, reach);
+        if (hitOpt.isEmpty()) return false;
+
+        ChainHitResult hit = hitOpt.get();
+        Chainable.ChainData link = hit.chainData();
+        if (link.glowLights == null) return false;
+        if (!(hit.chainedEntity() instanceof Chainable chainable)) return false;
+        if (!(chainable.getChainHolder(link) instanceof ChainKnotEntity holder)) return false;
+
+        if (player.level().isClientSide()) {
+            lastRemovalTick = player.level().getGameTime();
+            return true;
+        }
+
+        ServerLevel level = (ServerLevel) player.level();
+        Item item = BuiltInRegistries.ITEM.getValue(link.glowLights);
+        HangingLightHelper.removeAllForChain(level, hit.chainedEntity(), holder, link);
+        link.glowLights = null;
+        HangingLightHelper.placeAllForChain(level, hit.chainedEntity(), holder, link);
+        if (!player.isCreative() && item != Items.AIR) player.getInventory().add(new ItemStack(item));
+
+        sendGlowLightsSync(hit.chainedEntity(), holder, link, level);
+        level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.6f, 0.9f + level.getRandom().nextFloat() * 0.3f);
+        return true;
+    }
+
+    public static boolean tryPlaceGlowLights(Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (!stack.is(ModTagRegistry.GLOW_LIGHTS_ITEMS)) return false;
+
+        double reach = player.isCreative() ? 5.0 : 4.5;
+        Optional<ChainHitResult> hitOpt = raycastChains(player, reach);
+        if (hitOpt.isEmpty()) return false;
+
+        ChainHitResult hit = hitOpt.get();
+        if (!new ItemStack(hit.chainData().sourceItem).is(ModTagRegistry.GLOW_LIGHTS_CHAIN_SOURCES)) return false;
+
+        Entity chainedEntity = hit.chainedEntity();
+        if (!(chainedEntity instanceof Chainable chainable)) return false;
+        if (!(chainable.getChainHolder(hit.chainData()) instanceof ChainKnotEntity holderKnot)) return false;
+
+        Chainable.ChainData link = hit.chainData();
+        Item lightsItem = stack.getItem();
+        Identifier lightsId = BuiltInRegistries.ITEM.getKey(lightsItem);
+        if (lightsId.equals(link.glowLights)) return false;
+
+        if (player.level().isClientSide()) return true;
+
+        ServerLevel level = (ServerLevel) player.level();
+        Identifier previous = link.glowLights;
+        HangingLightHelper.removeAllForChain(level, chainedEntity, holderKnot, link);
+        link.glowLights = lightsId;
+        HangingLightHelper.placeAllForChain(level, chainedEntity, holderKnot, link);
+
+        if (!player.isCreative()) {
+            stack.shrink(1);
+            if (previous != null) {
+                Item previousItem = BuiltInRegistries.ITEM.getValue(previous);
+                if (previousItem != Items.AIR) player.getInventory().add(new ItemStack(previousItem));
+            }
+        }
+
+        sendGlowLightsSync(chainedEntity, holderKnot, link, level);
+        SoundType sound = Block.byItem(lightsItem).defaultBlockState().getSoundType();
+        level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                sound.getPlaceSound(), SoundSource.PLAYERS, 1.0f, 0.9f + level.getRandom().nextFloat() * 0.2f);
+        return true;
+    }
+
+    private static void sendGlowLightsSync(Entity chainedEntity, ChainKnotEntity holder, Chainable.ChainData link, ServerLevel level) {
+        Services.NETWORK.sendToAllClients(level.getServer(), new GlowLightsSyncS2CPacket(chainedEntity.getId(), holder.getId(), Optional.ofNullable(link.glowLights)));
     }
 
     private static Vec3 chainPoint(float t, Vec3 src, Vec3 dst, double dist3D, float slack) {

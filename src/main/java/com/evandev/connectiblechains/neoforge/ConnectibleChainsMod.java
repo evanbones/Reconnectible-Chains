@@ -90,6 +90,11 @@ public class ConnectibleChainsMod {
             event.setCancellationResult(InteractionResult.SUCCESS);
             return;
         }
+        if (ChainRaycastHelper.tryPlaceGlowLights(event.getEntity(), event.getHand())) {
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
+            return;
+        }
         if (ChainRaycastHelper.tryAdjustSlack(event.getEntity(), event.getHand())) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);
