@@ -10,6 +10,7 @@ import com.evandev.connectiblechains.platform.Services;
 import com.evandev.connectiblechains.tag.ModTagRegistry;
 import com.evandev.connectiblechains.util.ChainCollisionIndex;
 import com.evandev.connectiblechains.util.ChainTracker;
+import com.evandev.connectiblechains.util.GlowLightsParticles;
 //? if <26.1 {
 /*import com.evandev.connectiblechains.util.MathHelper;
 *///?}
@@ -186,6 +187,7 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
             Chainable.tickChain(serverWorld, this);
         } else {
             resolveClientHolders();
+            tickGlowLightsParticles();
         }
 
         if (!this.isRemoved()) {
@@ -206,6 +208,13 @@ public class ChainKnotEntity extends HangingEntity implements Chainable, ChainLi
 
         for (ChainData chain : chains) {
             getChainHolder(chain);
+        }
+    }
+
+    private void tickGlowLightsParticles() {
+        for (ChainData chainData : this.chainDataArray) {
+            Entity holder = chainData.getResolvedHolder();
+            if (holder != null && !holder.isRemoved()) GlowLightsParticles.tick(this.level(), this, chainData, holder);
         }
     }
 

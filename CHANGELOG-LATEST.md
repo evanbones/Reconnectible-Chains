@@ -1,6 +1,4 @@
-### Added
+### Fixed
 
-- Snowy Spirit glow lights can now be placed on chains and ropes!
-    - Right-click a chain with glow lights to wrap it in lights, or use an empty hand to take them off.
-    - To change which items or chains are supported, edit the `glow_lights_items` and `glow_lights_chain_sources` tags.
-- Added the Supplementaries redstone lantern to the `hangable_items` tag.
+- Prismatic glow lights on chains could show up as stretched purple stripes instead of animated lights.
+- Glow lights on chains now give off their sparkle particles, matching the colour and particle style set in Snowy Spirit's config.

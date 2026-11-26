@@ -213,13 +213,11 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
     private void renderGlowLights(PoseStack poseStack, SubmitNodeCollector collector, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
         if (chainData.glowLights == null) return;
         ChainCurve curve = ChainCurve.of(chainVec, chainData.slack);
-        Level level = Minecraft.getInstance().level;
-        if (curve == null || level == null) return;
-        long gameTime = level.getGameTime();
+        if (curve == null) return;
 
         glowLightsRenderer.sleeve(chainData.glowLights).ifPresent(sleeve ->
                 collector.submitCustomGeometry(poseStack, sleeve.renderType(), (pose, vertexConsumer) ->
-                        glowLightsRenderer.render(pose, vertexConsumer, curve, sleeve, gameTime)));
+                        glowLightsRenderer.render(pose, vertexConsumer, curve, sleeve)));
     }
 
     private void renderBannersAlongChain(PoseStack poseStack, SubmitNodeCollector collector, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
@@ -353,12 +351,10 @@ public class ChainKnotEntityRenderer extends EntityRenderer<ChainKnotEntity, Cha
     private void renderGlowLights(PoseStack matrices, MultiBufferSource buffers, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {
         if (chainData.glowLights == null) return;
         ChainCurve curve = ChainCurve.of(chainVec, chainData.slack);
-        Level level = Minecraft.getInstance().level;
-        if (curve == null || level == null) return;
-        long gameTime = level.getGameTime();
+        if (curve == null) return;
 
         glowLightsRenderer.sleeve(chainData.glowLights).ifPresent(sleeve ->
-                glowLightsRenderer.render(matrices.last(), buffers.getBuffer(sleeve.renderType()), curve, sleeve, gameTime));
+                glowLightsRenderer.render(matrices.last(), buffers.getBuffer(sleeve.renderType()), curve, sleeve));
     }
 
     private void renderBuntingsAlongChain(PoseStack matrices, MultiBufferSource buffers, Vector3f chainVec, ChainKnotEntityRenderState.ChainData chainData) {

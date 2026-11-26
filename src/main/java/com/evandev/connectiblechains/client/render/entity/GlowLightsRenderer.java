@@ -5,19 +5,20 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.packs.resources.Resource;
 import org.joml.Vector3f;
 
 //? if >=26.1 {
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.data.AtlasIds;
 //?} else {
 /*import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 *///?}
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -28,7 +29,6 @@ public class GlowLightsRenderer {
     private static final float END_INSET = 2f / 16f;
     private static final float FACE_U_WIDTH = 0.25f;
     private static final int FULL_BRIGHT = 0xF000F0;
-    private static final int FRAME_TIME = 9;
 
     private final Map<Identifier, Optional<Sleeve>> sleeves = new HashMap<>();
     private final Vector3f[] corners0 = {new Vector3f(), new Vector3f(), new Vector3f(), new Vector3f()};
@@ -48,39 +48,22 @@ public class GlowLightsRenderer {
 
         String variant = path.substring(ITEM_PREFIX.length());
         if (variant.equals("prismatic")) variant = "rainbow";
-        Identifier texture = Identifier.fromNamespaceAndPath(glowLights.getNamespace(), "textures/block/roped_lights_" + variant + ".png");
-
-        Optional<Resource> resource = Minecraft.getInstance().getResourceManager().getResource(texture);
-        if (resource.isEmpty()) return Optional.empty();
+        Identifier spriteId = Identifier.fromNamespaceAndPath(glowLights.getNamespace(), "block/roped_lights_" + variant);
 
         //? if >=26.1 {
-        RenderType renderType = RenderTypes.entityCutout(texture);
+        TextureAtlas atlas = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
+        TextureAtlasSprite sprite = atlas.getSprite(spriteId);
+        if (sprite == atlas.missingSprite()) return Optional.empty();
+        return Optional.of(new Sleeve(RenderTypes.entityCutout(TextureAtlas.LOCATION_BLOCKS), sprite));
         //?} else {
-        /*RenderType renderType = RenderType.entityCutoutNoCull(texture);
+        /*TextureAtlasSprite sprite = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(spriteId);
+        if (sprite.contents().name().equals(MissingTextureAtlasSprite.getLocation())) return Optional.empty();
+        return Optional.of(new Sleeve(RenderType.entityCutoutNoCull(TextureAtlas.LOCATION_BLOCKS), sprite));
         *///?}
-        return Optional.of(new Sleeve(renderType, frameCount(resource.get())));
     }
 
-    private static int frameCount(Resource resource) {
-        try (InputStream in = resource.open()) {
-            byte[] header = in.readNBytes(24);
-            if (header.length < 24) return 1;
-            int width = readInt(header, 16);
-            int height = readInt(header, 20);
-            return width > 0 ? Math.max(1, height / width) : 1;
-        } catch (IOException e) {
-            return 1;
-        }
-    }
-
-    private static int readInt(byte[] bytes, int offset) {
-        return ((bytes[offset] & 0xFF) << 24) | ((bytes[offset + 1] & 0xFF) << 16) | ((bytes[offset + 2] & 0xFF) << 8) | (bytes[offset + 3] & 0xFF);
-    }
-
-    public void render(PoseStack.Pose pose, VertexConsumer vc, ChainKnotEntityRenderer.ChainCurve curve, Sleeve sleeve, long gameTime) {
-        float frameHeight = 1f / sleeve.frames();
-        float frameOffset = (int) ((gameTime / FRAME_TIME) % sleeve.frames()) * frameHeight;
-
+    public void render(PoseStack.Pose pose, VertexConsumer buffer, ChainKnotEntityRenderer.ChainCurve curve, Sleeve sleeve) {
+        VertexConsumer vc = sleeve.sprite().wrap(buffer);
         float length = curve.distanceXZ();
         float inset = Math.min(END_INSET, length * 0.25f);
         float xEnd = length - inset;
@@ -108,7 +91,7 @@ public class GlowLightsRenderer {
                         float vTo = clamp01(v + sTo * segLen - cell);
                         corners(corners0, x0, y0, slope0, x1, y1, slope1, sFrom);
                         corners(corners1, x0, y0, slope0, x1, y1, slope1, sTo);
-                        emitSleeve(pose, vc, frameOffset + vFrom * frameHeight, frameOffset + vTo * frameHeight);
+                        emitSleeve(pose, vc, vFrom, vTo);
                     }
                     if (sBoundary <= 1f) cell++;
                     sFrom = Math.max(sFrom, sTo);
@@ -170,6 +153,6 @@ public class GlowLightsRenderer {
                 .setNormal(pose, nx, ny, nz);
     }
 
-    public record Sleeve(RenderType renderType, int frames) {
+    public record Sleeve(RenderType renderType, TextureAtlasSprite sprite) {
     }
 }

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] - 2026-11-25
+
+### Fixed
+
+- Prismatic glow lights on chains could show up as stretched purple stripes instead of animated lights.
+- Glow lights on chains now give off their sparkle particles, matching the colour and particle style set in Snowy
+  Spirit's config.
+
 ## [2.6.0] - 2026-11-19
 
 ### Added
